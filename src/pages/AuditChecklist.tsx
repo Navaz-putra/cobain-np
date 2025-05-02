@@ -1,7 +1,5 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -59,8 +57,8 @@ interface Subdomain {
   questions: AuditQuestion[];
 }
 
-// Domain name mapping
-const domainNames = {
+// Define a more comprehensive set of domain and subdomain names
+const domainNames: Record<string, string> = {
   "EDM": "Evaluate, Direct and Monitor",
   "APO": "Align, Plan and Organize",
   "BAI": "Build, Acquire and Implement",
@@ -68,15 +66,57 @@ const domainNames = {
   "MEA": "Monitor, Evaluate and Assess"
 };
 
-// Subdomain name mapping
-const subdomainNames = {
-  "EDM01": "Ensured Governance Framework Setting and Maintenance",
-  "EDM02": "Ensured Benefits Delivery",
-  "APO01": "Managed IT Management Framework",
-  "APO02": "Managed Strategy",
-  "BAI01": "Managed Programs and Projects",
-  "DSS01": "Managed Operations",
-  "MEA01": "Managed Performance and Conformance Monitoring"
+// Define a more comprehensive set of subdomain names
+const subdomainNames: Record<string, string> = {
+  // EDM Subdomains
+  "EDM01": "Memastikan Kerangka Tata Kelola Ditetapkan dan Dipelihara",
+  "EDM02": "Memastikan Penghantaran Manfaat",
+  "EDM03": "Memastikan Optimalisasi Risiko",
+  "EDM04": "Memastikan Optimalisasi Sumber Daya",
+  "EDM05": "Memastikan Keterlibatan Pemangku Kepentingan",
+  
+  // APO Subdomains
+  "APO01": "Mengelola Kerangka Manajemen TI",
+  "APO02": "Mengelola Strategi",
+  "APO03": "Mengelola Arsitektur Perusahaan",
+  "APO04": "Mengelola Inovasi",
+  "APO05": "Mengelola Portfolio",
+  "APO06": "Mengelola Anggaran dan Biaya",
+  "APO07": "Mengelola Sumber Daya Manusia",
+  "APO08": "Mengelola Hubungan",
+  "APO09": "Mengelola Perjanjian Layanan",
+  "APO10": "Mengelola Vendor",
+  "APO11": "Mengelola Kualitas",
+  "APO12": "Mengelola Risiko",
+  "APO13": "Mengelola Keamanan",
+  "APO14": "Mengelola Data",
+  
+  // BAI Subdomains
+  "BAI01": "Mengelola Program",
+  "BAI02": "Mengelola Definisi Persyaratan",
+  "BAI03": "Mengelola Identifikasi dan Pembangunan Solusi",
+  "BAI04": "Mengelola Ketersediaan dan Kapasitas",
+  "BAI05": "Mengelola Perubahan Organisasi",
+  "BAI06": "Mengelola Perubahan TI",
+  "BAI07": "Mengelola Penerimaan dan Transisi Perubahan TI",
+  "BAI08": "Mengelola Pengetahuan",
+  "BAI09": "Mengelola Aset",
+  "BAI10": "Mengelola Konfigurasi",
+  "BAI11": "Mengelola Proyek",
+  
+  // DSS Subdomains
+  "DSS01": "Mengelola Operasi",
+  "DSS02": "Mengelola Permintaan Layanan dan Insiden",
+  "DSS03": "Mengelola Masalah",
+  "DSS04": "Mengelola Kontinuitas",
+  "DSS05": "Mengelola Layanan Keamanan",
+  "DSS06": "Mengelola Kontrol Proses Bisnis",
+  
+  // MEA Subdomains
+  "MEA01": "Mengelola Pemantauan Kinerja dan Kesesuaian",
+  "MEA02": "Memantau, Mengevaluasi, dan Menilai Sistem Pengendalian Internal",
+  "MEA03": "Memantau, Mengevaluasi, dan Menilai Kepatuhan terhadap Persyaratan Eksternal",
+  "MEA04": "Memantau, Mengevaluasi, dan Menilai Jaminan"
 };
 
 export default function AuditChecklist() {
@@ -127,7 +167,9 @@ export default function AuditChecklist() {
         // Fetch all COBIT questions
         const { data: questionData, error: questionError } = await supabase
           .from("cobit_questions")
-          .select("*");
+          .select("*")
+          .order('domain_id')
+          .order('subdomain_id');
 
         if (questionError) {
           console.error("Error fetching questions:", questionError);
@@ -138,6 +180,8 @@ export default function AuditChecklist() {
           return;
         }
 
+        console.log("Fetched questions:", questionData?.length);
+        
         // Fetch existing answers for this audit
         const { data: answersData, error: answersError } = await supabase
           .from("audit_answers")
@@ -170,7 +214,7 @@ export default function AuditChecklist() {
           if (!domainMap[domainId]) {
             domainMap[domainId] = {
               id: domainId,
-              name: domainNames[domainId as keyof typeof domainNames] || domainId,
+              name: domainNames[domainId] || domainId,
               subdomains: []
             };
           }
@@ -181,7 +225,7 @@ export default function AuditChecklist() {
           if (!subdomain) {
             subdomain = {
               id: subdomainId,
-              name: subdomainNames[subdomainId as keyof typeof subdomainNames] || subdomainId,
+              name: subdomainNames[subdomainId] || subdomainId,
               questions: []
             };
             domain.subdomains.push(subdomain);

@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { MessageCircle, X, Send, ChevronDown } from "lucide-react";
 
 interface Message {
@@ -45,7 +44,6 @@ export function Chatbot() {
   
   // Always use Indonesian language for the chatbot
   const language = "id";
-  const { t } = useLanguage();
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -54,7 +52,7 @@ export function Chatbot() {
         { text: CHATBOT_RESPONSES[language].greeting, isUser: false }
       ]);
     }
-  }, [isOpen]);
+  }, [isOpen, messages.length]);
 
   useEffect(() => {
     // Scroll to bottom of messages
