@@ -13,7 +13,7 @@ export default function Landing() {
   } = useAuth();
   return <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="gradient-bg text-white py-20 px-6">
+      <section className="gradient-bg text-white py-[125px] px-[10px]">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="md:w-1/2 mb-10 md:mb-0">
