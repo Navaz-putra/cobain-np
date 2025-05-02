@@ -9,7 +9,117 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      audit_answers: {
+        Row: {
+          audit_id: string
+          created_at: string
+          id: string
+          maturity_level: number
+          notes: string | null
+          question_id: string
+          updated_at: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          id?: string
+          maturity_level: number
+          notes?: string | null
+          question_id: string
+          updated_at?: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          id?: string
+          maturity_level?: number
+          notes?: string | null
+          question_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "cobit_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_audit_id"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audits: {
+        Row: {
+          audit_date: string
+          created_at: string
+          description: string | null
+          id: string
+          organization: string
+          scope: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audit_date: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          organization: string
+          scope?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audit_date?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          organization?: string
+          scope?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cobit_questions: {
+        Row: {
+          created_at: string
+          domain_id: string
+          id: string
+          subdomain_id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          domain_id: string
+          id?: string
+          subdomain_id: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          domain_id?: string
+          id?: string
+          subdomain_id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -29,6 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarCheck, ChevronLeft, ChevronRight, FileCheck } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock COBIT domains
 const cobitDomains = [
@@ -56,9 +58,6 @@ const auditFormSchema = z.object({
   scope: z.string().min(5, {
     message: "Ruang lingkup audit diperlukan.",
   }),
-  domains: z.array(z.string()).min(1, {
-    message: "Pilih minimal satu domain COBIT.",
-  }),
   agreeToTerms: z.boolean().refine(val => val === true, {
     message: "Anda harus menyetujui syarat dan ketentuan.",
   }),
@@ -70,11 +69,8 @@ export default function StartAudit() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Initialize with all domains selected
-  const allDomainIds = cobitDomains.map(domain => domain.id);
-  const [selectedDomains, setSelectedDomains] = useState<string[]>(allDomainIds);
-
   // Initialize the form
   const form = useForm<z.infer<typeof auditFormSchema>>({
     resolver: zodResolver(auditFormSchema),
@@ -84,39 +80,60 @@ export default function StartAudit() {
       auditDate: format(new Date(), "yyyy-MM-dd"),
       organization: "",
       scope: "",
-      domains: allDomainIds, // Initialize with all domains
       agreeToTerms: false,
     },
   });
 
   // Handle form submission
-  const onSubmit = (values: z.infer<typeof auditFormSchema>) => {
-    console.log(values);
-    toast({
-      title: "Audit Dibuat",
-      description: `Audit ${values.title} berhasil dibuat`,
-    });
+  const onSubmit = async (values: z.infer<typeof auditFormSchema>) => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "Anda harus login untuk membuat audit",
+      });
+      navigate("/login");
+      return;
+    }
     
-    // Redirect to the audit checklist page with a mock audit ID
-    // In a real app, we would create the audit in the database and get a real ID
-    navigate("/audit-checklist/new-audit");
-  };
-
-  // Fixed domain selection handling - now only used if user wants to deselect a domain
-  const handleDomainToggle = (domainId: string) => {
-    setSelectedDomains((prevDomains) => {
-      const isSelected = prevDomains.includes(domainId);
-      const newDomains = isSelected 
-        ? prevDomains.filter(d => d !== domainId) 
-        : [...prevDomains, domainId];
+    try {
+      setIsSubmitting(true);
       
-      // Update form value outside of render cycle
-      setTimeout(() => {
-        form.setValue("domains", newDomains, { shouldValidate: true });
-      }, 0);
+      // Create a new audit in the database
+      const { data, error } = await supabase
+        .from("audits")
+        .insert({
+          title: values.title,
+          description: values.description,
+          audit_date: values.auditDate,
+          organization: values.organization,
+          scope: values.scope,
+          user_id: user.id,
+          status: 'in_progress'
+        })
+        .select()
+        .single();
       
-      return newDomains;
-    });
+      if (error) {
+        console.error("Error creating audit:", error);
+        throw error;
+      }
+      
+      toast({
+        title: "Audit Dibuat",
+        description: `Audit ${values.title} berhasil dibuat`,
+      });
+      
+      // Redirect to the audit checklist page with the new audit ID
+      navigate(`/audit-checklist/${data.id}`);
+    } catch (error) {
+      console.error("Error submitting audit:", error);
+      toast({
+        title: "Error",
+        description: "Gagal membuat audit baru"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Check authentication
@@ -276,40 +293,31 @@ export default function StartAudit() {
                     </p>
                   </div>
 
-                  <FormField
-                    control={form.control}
-                    name="domains"
-                    render={() => (
-                      <FormItem>
-                        <div className="space-y-4">
-                          {cobitDomains.map((domain) => (
-                            <Card 
-                              key={domain.id}
-                              className="border-primary bg-primary/5"
-                            >
-                              <CardHeader className="p-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <CardTitle className="text-base">
-                                      {domain.id} - {domain.name}
-                                    </CardTitle>
-                                    <CardDescription className="mt-1">
-                                      {domain.desc}
-                                    </CardDescription>
-                                  </div>
-                                  <Checkbox 
-                                    checked={true}
-                                    disabled={true}
-                                  />
-                                </div>
-                              </CardHeader>
-                            </Card>
-                          ))}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="space-y-4">
+                    {cobitDomains.map((domain) => (
+                      <Card 
+                        key={domain.id}
+                        className="border-primary bg-primary/5"
+                      >
+                        <CardHeader className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-base">
+                                {domain.id} - {domain.name}
+                              </CardTitle>
+                              <CardDescription className="mt-1">
+                                {domain.desc}
+                              </CardDescription>
+                            </div>
+                            <Checkbox 
+                              checked={true}
+                              disabled={true}
+                            />
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -401,9 +409,12 @@ export default function StartAudit() {
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={form.handleSubmit(onSubmit)}>
+            <Button 
+              onClick={form.handleSubmit(onSubmit)}
+              disabled={isSubmitting}
+            >
               <FileCheck className="mr-2 h-4 w-4" />
-              Mulai Audit
+              {isSubmitting ? "Menyimpan..." : "Mulai Audit"}
             </Button>
           )}
         </CardFooter>

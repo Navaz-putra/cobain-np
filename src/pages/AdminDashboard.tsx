@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -37,6 +36,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data
 const mockUsers = [
@@ -138,6 +139,22 @@ const domainStructure = [
       { id: "BAI06", name: "Managed IT Changes" },
     ]
   },
+  {
+    id: "DSS",
+    name: "Deliver, Service and Support",
+    subdomains: [
+      { id: "DSS01", name: "Managed Operations" },
+      { id: "DSS02", name: "Managed Service Requests and Incidents" },
+    ]
+  },
+  {
+    id: "MEA",
+    name: "Monitor, Evaluate and Assess",
+    subdomains: [
+      { id: "MEA01", name: "Managed Performance and Conformance Monitoring" },
+      { id: "MEA02", name: "Managed System of Internal Control" },
+    ]
+  }
 ];
 
 export default function AdminDashboard() {
@@ -148,9 +165,12 @@ export default function AdminDashboard() {
   const [searchQuestion, setSearchQuestion] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAddQuestionDialogOpen, setIsAddQuestionDialogOpen] = useState(false);
+  const [isEditQuestionDialogOpen, setIsEditQuestionDialogOpen] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string>("");
   const [selectedSubdomain, setSelectedSubdomain] = useState<string>("");
-  const [questions, setQuestions] = useState(mockQuestions);
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -163,34 +183,61 @@ export default function AdminDashboard() {
   // New question form state
   const [newQuestion, setNewQuestion] = useState({
     text: "",
-    domain: "",
-    process: "",
-    subdomain: "",
-    practice: "",
-    maturityLevel: "1",
-    enabled: true,
+    domain_id: "",
+    subdomain_id: "",
   });
 
-  const filteredUsers = mockUsers.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchUser.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchUser.toLowerCase())
-  );
+  // Edit question form state
+  const [editQuestion, setEditQuestion] = useState({
+    id: "",
+    text: "",
+    domain_id: "",
+    subdomain_id: "",
+  });
 
+  // Fetch questions from database
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('cobit_questions')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+
+        setQuestions(data || []);
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+        toast({
+          title: 'Error',
+          description: 'Gagal mengambil data pertanyaan audit'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [toast]);
+
+  // Filtered questions based on search and domain/subdomain selection
   const filteredQuestions = questions.filter(
     (question) => {
       // Apply domain and subdomain filters first
-      if (selectedDomain && question.domain !== selectedDomain) {
+      if (selectedDomain && question.domain_id !== selectedDomain) {
         return false;
       }
-      if (selectedSubdomain && question.subdomain.split(".")[0] !== selectedSubdomain) {
+      if (selectedSubdomain && question.subdomain_id !== selectedSubdomain) {
         return false;
       }
       
       // Then apply search text filter
       return question.text.toLowerCase().includes(searchQuestion.toLowerCase()) ||
-        question.domain.toLowerCase().includes(searchQuestion.toLowerCase()) ||
-        question.process.toLowerCase().includes(searchQuestion.toLowerCase());
+        question.domain_id.toLowerCase().includes(searchQuestion.toLowerCase()) ||
+        question.subdomain_id.toLowerCase().includes(searchQuestion.toLowerCase());
     }
   );
 
@@ -208,57 +255,133 @@ export default function AdminDashboard() {
     });
   };
 
-  const handleAddQuestion = () => {
-    const newId = Math.max(...questions.map(q => q.id)) + 1;
-    const questionToAdd = {
-      id: newId,
-      text: newQuestion.text,
-      domain: newQuestion.domain,
-      process: newQuestion.process,
-      subdomain: newQuestion.subdomain,
-      practice: newQuestion.practice,
-      maturityLevel: parseInt(newQuestion.maturityLevel),
-      enabled: true
-    };
-    
-    setQuestions([...questions, questionToAdd]);
-    
-    toast({
-      title: "Question Added",
-      description: "The audit question has been added successfully",
-    });
-    
-    setIsAddQuestionDialogOpen(false);
-    setNewQuestion({
-      text: "",
-      domain: "",
-      process: "",
-      subdomain: "",
-      practice: "",
-      maturityLevel: "1",
-      enabled: true,
-    });
+  const handleAddQuestion = async () => {
+    try {
+      if (!newQuestion.text || !newQuestion.domain_id || !newQuestion.subdomain_id) {
+        toast({
+          title: "Error",
+          description: "Harap isi semua field yang diperlukan",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('cobit_questions')
+        .insert({
+          text: newQuestion.text,
+          domain_id: newQuestion.domain_id,
+          subdomain_id: newQuestion.subdomain_id
+        })
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+
+      setQuestions([...questions, data[0]]);
+      
+      toast({
+        title: "Question Added",
+        description: "Pertanyaan audit baru berhasil ditambahkan",
+      });
+      
+      setIsAddQuestionDialogOpen(false);
+      setNewQuestion({
+        text: "",
+        domain_id: "",
+        subdomain_id: "",
+      });
+    } catch (error) {
+      console.error("Error adding question:", error);
+      toast({
+        title: "Error",
+        description: "Gagal menambahkan pertanyaan"
+      });
+    }
   };
 
-  // Toggle question enabled status
-  const toggleQuestionStatus = (id: number) => {
-    setQuestions(prevQuestions => 
-      prevQuestions.map(q => 
-        q.id === id ? { ...q, enabled: !q.enabled } : q
-      )
-    );
-    
-    const question = questions.find(q => q.id === id);
-    toast({
-      title: question?.enabled ? "Question Disabled" : "Question Enabled",
-      description: `The question has been ${question?.enabled ? "removed from" : "added to"} the audit checklist`,
+  const handleEditQuestion = async () => {
+    try {
+      if (!editQuestion.text || !editQuestion.domain_id || !editQuestion.subdomain_id) {
+        toast({
+          title: "Error",
+          description: "Harap isi semua field yang diperlukan",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('cobit_questions')
+        .update({
+          text: editQuestion.text,
+          domain_id: editQuestion.domain_id,
+          subdomain_id: editQuestion.subdomain_id
+        })
+        .eq('id', editQuestion.id)
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+
+      setQuestions(questions.map(q => q.id === editQuestion.id ? data[0] : q));
+      
+      toast({
+        title: "Question Updated",
+        description: "Pertanyaan audit berhasil diperbarui",
+      });
+      
+      setIsEditQuestionDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating question:", error);
+      toast({
+        title: "Error",
+        description: "Gagal memperbarui pertanyaan"
+      });
+    }
+  };
+
+  const handleDeleteQuestion = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('cobit_questions')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        throw error;
+      }
+
+      setQuestions(questions.filter(q => q.id !== id));
+      
+      toast({
+        title: "Question Deleted",
+        description: "Pertanyaan audit berhasil dihapus",
+      });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      toast({
+        title: "Error",
+        description: "Gagal menghapus pertanyaan"
+      });
+    }
+  };
+
+  // Open edit dialog and populate form
+  const openEditDialog = (question: any) => {
+    setEditQuestion({
+      id: question.id,
+      text: question.text,
+      domain_id: question.domain_id,
+      subdomain_id: question.subdomain_id,
     });
+    setIsEditQuestionDialogOpen(true);
   };
 
   // Get available subdomains based on selected domain
-  const getAvailableSubdomains = () => {
-    if (!selectedDomain) return [];
-    const domain = domainStructure.find(d => d.id === selectedDomain);
+  const getAvailableSubdomains = (domainId: string) => {
+    if (!domainId) return [];
+    const domain = domainStructure.find(d => d.id === domainId);
     return domain ? domain.subdomains : [];
   };
 
@@ -401,11 +524,13 @@ export default function AdminDashboard() {
                     <Label htmlFor="question-text" className="text-right">
                       Question
                     </Label>
-                    <Input
+                    <Textarea
                       id="question-text"
                       value={newQuestion.text}
                       onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
                       className="col-span-3"
+                      rows={3}
+                      placeholder="Masukkan pertanyaan audit"
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
@@ -413,103 +538,51 @@ export default function AdminDashboard() {
                       Domain
                     </Label>
                     <Select
-                      value={newQuestion.domain}
+                      value={newQuestion.domain_id}
                       onValueChange={(value) => {
                         setNewQuestion({ 
                           ...newQuestion, 
-                          domain: value,
-                          process: "", // Reset process when domain changes
-                          subdomain: "", // Reset subdomain when domain changes
-                          practice: "" // Reset practice when domain changes
+                          domain_id: value,
+                          subdomain_id: "" // Reset subdomain when domain changes
                         });
                       }}
                     >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select domain" />
+                        <SelectValue placeholder="Pilih domain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="EDM">EDM</SelectItem>
-                        <SelectItem value="APO">APO</SelectItem>
-                        <SelectItem value="BAI">BAI</SelectItem>
-                        <SelectItem value="DSS">DSS</SelectItem>
-                        <SelectItem value="MEA">MEA</SelectItem>
+                        {domainStructure.map(domain => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.id} - {domain.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="process" className="text-right">
-                      Process
+                    <Label htmlFor="subdomain" className="text-right">
+                      Subdomain
                     </Label>
                     <Select
-                      value={newQuestion.process}
-                      onValueChange={(value) => setNewQuestion({ ...newQuestion, process: value })}
-                      disabled={!newQuestion.domain}
+                      value={newQuestion.subdomain_id}
+                      onValueChange={(value) => setNewQuestion({ ...newQuestion, subdomain_id: value })}
+                      disabled={!newQuestion.domain_id}
                     >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select process" />
+                        <SelectValue placeholder="Pilih subdomain" />
                       </SelectTrigger>
                       <SelectContent>
-                        {newQuestion.domain === "EDM" && (
-                          <>
-                            <SelectItem value="EDM01">EDM01</SelectItem>
-                            <SelectItem value="EDM02">EDM02</SelectItem>
-                            <SelectItem value="EDM03">EDM03</SelectItem>
-                          </>
-                        )}
-                        {newQuestion.domain === "APO" && (
-                          <>
-                            <SelectItem value="APO01">APO01</SelectItem>
-                            <SelectItem value="APO09">APO09</SelectItem>
-                            <SelectItem value="APO10">APO10</SelectItem>
-                          </>
-                        )}
-                        {newQuestion.domain === "BAI" && (
-                          <>
-                            <SelectItem value="BAI03">BAI03</SelectItem>
-                            <SelectItem value="BAI06">BAI06</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="practice" className="text-right">
-                      Practice
-                    </Label>
-                    <Input
-                      id="practice"
-                      value={newQuestion.practice}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, practice: e.target.value, subdomain: e.target.value })}
-                      placeholder="e.g., EDM01.01"
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="maturity" className="text-right">
-                      Maturity Level
-                    </Label>
-                    <Select
-                      value={newQuestion.maturityLevel}
-                      onValueChange={(value) =>
-                        setNewQuestion({ ...newQuestion, maturityLevel: value })
-                      }
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">0 - Incomplete</SelectItem>
-                        <SelectItem value="1">1 - Performed</SelectItem>
-                        <SelectItem value="2">2 - Managed</SelectItem>
-                        <SelectItem value="3">3 - Established</SelectItem>
-                        <SelectItem value="4">4 - Predictable</SelectItem>
-                        <SelectItem value="5">5 - Optimizing</SelectItem>
+                        {newQuestion.domain_id && getAvailableSubdomains(newQuestion.domain_id).map(subdomain => (
+                          <SelectItem key={subdomain.id} value={subdomain.id}>
+                            {subdomain.id} - {subdomain.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleAddQuestion}>Add Question</Button>
+                  <Button onClick={handleAddQuestion}>Tambah Pertanyaan</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -550,15 +623,15 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="users" className="w-full">
+      <Tabs defaultValue="questions" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="users">
             <Users className="mr-2 h-4 w-4" />
-            User Management
+            Manajemen Pengguna
           </TabsTrigger>
           <TabsTrigger value="questions">
             <FileText className="mr-2 h-4 w-4" />
-            Audit Questions
+            Pertanyaan Audit
           </TabsTrigger>
         </TabsList>
         
@@ -603,7 +676,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredUsers.map((user) => (
+                    {mockUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.id}</TableCell>
                         <TableCell>{user.name}</TableCell>
@@ -647,8 +720,8 @@ export default function AdminDashboard() {
         <TabsContent value="questions">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle>Audit Questions</CardTitle>
-              <CardDescription>Manage COBIT 2019 audit questions and checklists for each subdomain</CardDescription>
+              <CardTitle>Pertanyaan Audit</CardTitle>
+              <CardDescription>Kelola pertanyaan audit COBIT 2019 untuk setiap subdomain</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col space-y-4">
@@ -659,10 +732,10 @@ export default function AdminDashboard() {
                       onValueChange={handleDomainChange}
                     >
                       <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="All Domains" />
+                        <SelectValue placeholder="Semua Domain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Domains</SelectItem>
+                        <SelectItem value="">Semua Domain</SelectItem>
                         {domainStructure.map(domain => (
                           <SelectItem key={domain.id} value={domain.id}>
                             {domain.id} - {domain.name}
@@ -677,11 +750,11 @@ export default function AdminDashboard() {
                       disabled={!selectedDomain}
                     >
                       <SelectTrigger className="w-[220px]">
-                        <SelectValue placeholder="All Processes" />
+                        <SelectValue placeholder="Semua Subdomain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Processes</SelectItem>
-                        {getAvailableSubdomains().map(subdomain => (
+                        <SelectItem value="">Semua Subdomain</SelectItem>
+                        {selectedDomain && getAvailableSubdomains(selectedDomain).map(subdomain => (
                           <SelectItem key={subdomain.id} value={subdomain.id}>
                             {subdomain.id} - {subdomain.name}
                           </SelectItem>
@@ -694,7 +767,7 @@ export default function AdminDashboard() {
                     <div className="relative w-full md:w-[300px]">
                       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Search questions..."
+                        placeholder="Cari pertanyaan..."
                         className="pl-8"
                         value={searchQuestion}
                         onChange={(e) => setSearchQuestion(e.target.value)}
@@ -705,100 +778,163 @@ export default function AdminDashboard() {
                       <DialogTrigger asChild>
                         <Button>
                           <Plus className="mr-2 h-4 w-4" />
-                          Add Question
+                          Tambah Pertanyaan
                         </Button>
                       </DialogTrigger>
+                      <DialogContent className="sm:max-w-[525px]">
+                        <DialogHeader>
+                          <DialogTitle>Tambah Pertanyaan Audit Baru</DialogTitle>
+                          <DialogDescription>
+                            Buat pertanyaan baru untuk audit COBIT 2019.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="question-text" className="text-right">
+                              Pertanyaan
+                            </Label>
+                            <Textarea
+                              id="question-text"
+                              value={newQuestion.text}
+                              onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+                              className="col-span-3"
+                              rows={3}
+                              placeholder="Masukkan pertanyaan audit"
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="domain" className="text-right">
+                              Domain
+                            </Label>
+                            <Select
+                              value={newQuestion.domain_id}
+                              onValueChange={(value) => {
+                                setNewQuestion({ 
+                                  ...newQuestion, 
+                                  domain_id: value,
+                                  subdomain_id: "" // Reset subdomain when domain changes
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Pilih domain" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {domainStructure.map(domain => (
+                                  <SelectItem key={domain.id} value={domain.id}>
+                                    {domain.id} - {domain.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="subdomain" className="text-right">
+                              Subdomain
+                            </Label>
+                            <Select
+                              value={newQuestion.subdomain_id}
+                              onValueChange={(value) => setNewQuestion({ ...newQuestion, subdomain_id: value })}
+                              disabled={!newQuestion.domain_id}
+                            >
+                              <SelectTrigger className="col-span-3">
+                                <SelectValue placeholder="Pilih subdomain" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {newQuestion.domain_id && getAvailableSubdomains(newQuestion.domain_id).map(subdomain => (
+                                  <SelectItem key={subdomain.id} value={subdomain.id}>
+                                    {subdomain.id} - {subdomain.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={handleAddQuestion}>Tambah Pertanyaan</Button>
+                        </DialogFooter>
+                      </DialogContent>
                     </Dialog>
                   </div>
                 </div>
                 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Question</TableHead>
-                        <TableHead>Domain</TableHead>
-                        <TableHead>Process</TableHead>
-                        <TableHead>Level</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredQuestions.map((question) => (
-                        <TableRow key={question.id} className={!question.enabled ? "bg-muted/30" : ""}>
-                          <TableCell className="font-medium">{question.id}</TableCell>
-                          <TableCell className="max-w-[300px] truncate">
-                            {question.text}
-                          </TableCell>
-                          <TableCell>{question.domain}</TableCell>
-                          <TableCell>{question.process}</TableCell>
-                          <TableCell>{question.maturityLevel}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              {question.enabled ? (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="flex items-center text-green-600"
-                                  onClick={() => toggleQuestionStatus(question.id)}
-                                >
-                                  <CheckCircle className="mr-1 h-4 w-4" />
-                                  Aktif
-                                </Button>
-                              ) : (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  className="flex items-center text-red-600"
-                                  onClick={() => toggleQuestionStatus(question.id)}
-                                >
-                                  <CircleX className="mr-1 h-4 w-4" />
-                                  Nonaktif
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              {question.enabled ? (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => toggleQuestionStatus(question.id)}
-                                  title="Remove from checklist"
-                                >
-                                  <ListMinus className="h-4 w-4" />
-                                </Button>
-                              ) : (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => toggleQuestionStatus(question.id)}
-                                  title="Add to checklist"
-                                >
-                                  <ListPlus className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon">
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                {loading ? (
+                  <div className="text-center py-8">
+                    <p>Memuat data pertanyaan...</p>
+                  </div>
+                ) : filteredQuestions.length > 0 ? (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Pertanyaan</TableHead>
+                          <TableHead>Domain</TableHead>
+                          <TableHead>Subdomain</TableHead>
+                          <TableHead className="text-right">Aksi</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredQuestions.map((question) => (
+                          <TableRow key={question.id}>
+                            <TableCell className="max-w-[300px]">
+                              {question.text}
+                            </TableCell>
+                            <TableCell>{question.domain_id}</TableCell>
+                            <TableCell>{question.subdomain_id}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => openEditDialog(question)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => handleDeleteQuestion(question.id)}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p>Tidak ada pertanyaan yang sesuai dengan kriteria pencarian.</p>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+
+              {/* Edit Question Dialog */}
+              <Dialog open={isEditQuestionDialogOpen} onOpenChange={setIsEditQuestionDialogOpen}>
+                <DialogContent className="sm:max-w-[525px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit Pertanyaan Audit</DialogTitle>
+                    <DialogDescription>
+                      Perbarui pertanyaan yang ada untuk audit COBIT 2019.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-question-text" className="text-right">
+                        Pertanyaan
+                      </Label>
+                      <Textarea
+                        id="edit-question-text"
+                        value={editQuestion.text}
+                        onChange={(e) => setEditQuestion({ ...editQuestion, text: e.target.value })}
+                        className="col-span-3"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-domain" className="text-right">
+                        Domain
+                      </Label>
+                      <Select

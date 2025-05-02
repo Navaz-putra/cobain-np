@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { 
   Card, 
@@ -11,178 +12,338 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Mock COBIT domains structure with questions
-const mockAuditQuestions = {
-  EDM: {
-    name: "Evaluate, Direct and Monitor",
-    subdomains: [
-      {
-        id: "EDM01",
-        name: "Ensured Governance Framework Setting and Maintenance",
-        questions: [
-          { id: "EDM01.01", text: "Apakah tata kelola TI selaras dengan tata kelola perusahaan?", answer: null },
-          { id: "EDM01.02", text: "Apakah ada struktur, proses, dan praktik yang jelas untuk tata kelola TI?", answer: null },
-          { id: "EDM01.03", text: "Apakah keputusan TI strategis dibuat sesuai dengan kebutuhan stakeholder?", answer: null },
-        ]
-      },
-      {
-        id: "EDM02",
-        name: "Ensured Benefits Delivery",
-        questions: [
-          { id: "EDM02.01", text: "Apakah nilai optimal dari inisiatif TI, layanan, dan aset telah diamankan?", answer: null },
-          { id: "EDM02.02", text: "Apakah ada sistem pengukuran nilai yang jelas untuk investasi TI?", answer: null },
-        ]
-      }
-    ]
-  },
-  APO: {
-    name: "Align, Plan and Organize",
-    subdomains: [
-      {
-        id: "APO01",
-        name: "Managed IT Management Framework",
-        questions: [
-          { id: "APO01.01", text: "Apakah kerangka manajemen TI selaras dengan strategi perusahaan?", answer: null },
-          { id: "APO01.02", text: "Apakah peran dan tanggung jawab TI didefinisikan dengan jelas?", answer: null },
-        ]
-      },
-      {
-        id: "APO02",
-        name: "Managed Strategy",
-        questions: [
-          { id: "APO02.01", text: "Apakah strategi TI mendukung strategi bisnis keseluruhan?", answer: null },
-          { id: "APO02.02", text: "Apakah ada roadmap implementasi strategi TI yang jelas?", answer: null },
-        ]
-      }
-    ]
-  },
-  BAI: {
-    name: "Build, Acquire and Implement",
-    subdomains: [
-      {
-        id: "BAI01",
-        name: "Managed Programs and Projects",
-        questions: [
-          { id: "BAI01.01", text: "Apakah ada metodologi manajemen proyek TI yang konsisten?", answer: null },
-          { id: "BAI01.02", text: "Apakah kinerja proyek TI dipantau secara teratur?", answer: null },
-        ]
-      }
-    ]
-  },
-  DSS: {
-    name: "Deliver, Service and Support",
-    subdomains: [
-      {
-        id: "DSS01",
-        name: "Managed Operations",
-        questions: [
-          { id: "DSS01.01", text: "Apakah aktivitas operasional TI dilakukan sesuai dengan kebutuhan?", answer: null },
-          { id: "DSS01.02", text: "Apakah outsourcing layanan TI dikelola dengan efektif?", answer: null },
-        ]
-      }
-    ]
-  },
-  MEA: {
-    name: "Monitor, Evaluate and Assess",
-    subdomains: [
-      {
-        id: "MEA01",
-        name: "Managed Performance and Conformance Monitoring",
-        questions: [
-          { id: "MEA01.01", text: "Apakah kinerja TI dipantau secara teratur?", answer: null },
-          { id: "MEA01.02", text: "Apakah target kinerja TI ditetapkan dan direvisi secara berkala?", answer: null },
-        ]
-      }
-    ]
-  }
+// Define maturity level descriptions
+const maturityLevels = [
+  { value: 0, label: "0 - Incomplete", description: "Process is not implemented or fails to achieve its purpose" },
+  { value: 1, label: "1 - Performed", description: "Process is implemented and achieves its purpose" },
+  { value: 2, label: "2 - Managed", description: "Process is planned, monitored and adjusted" },
+  { value: 3, label: "3 - Established", description: "Process is well defined and follows standards" },
+  { value: 4, label: "4 - Predictable", description: "Process is measured and controlled" },
+  { value: 5, label: "5 - Optimizing", description: "Process is continuously improved" }
+];
+
+// Define types for our data
+interface AuditQuestion {
+  id: string;
+  text: string;
+  domain_id: string;
+  subdomain_id: string;
+  answer?: {
+    maturity_level: number;
+    notes: string | null;
+  };
+}
+
+interface Domain {
+  id: string;
+  name: string;
+  subdomains: Subdomain[];
+}
+
+interface Subdomain {
+  id: string;
+  name: string;
+  questions: AuditQuestion[];
+}
+
+// Domain name mapping
+const domainNames = {
+  "EDM": "Evaluate, Direct and Monitor",
+  "APO": "Align, Plan and Organize",
+  "BAI": "Build, Acquire and Implement",
+  "DSS": "Deliver, Service and Support",
+  "MEA": "Monitor, Evaluate and Assess"
+};
+
+// Subdomain name mapping
+const subdomainNames = {
+  "EDM01": "Ensured Governance Framework Setting and Maintenance",
+  "EDM02": "Ensured Benefits Delivery",
+  "APO01": "Managed IT Management Framework",
+  "APO02": "Managed Strategy",
+  "BAI01": "Managed Programs and Projects",
+  "DSS01": "Managed Operations",
+  "MEA01": "Managed Performance and Conformance Monitoring"
 };
 
 export default function AuditChecklist() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { auditId } = useParams();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [auditData, setAuditData] = useState(null);
-  const [currentDomain, setCurrentDomain] = useState("EDM");
+  const [saving, setSaving] = useState(false);
+  const [auditData, setAuditData] = useState<any>(null);
+  const [currentDomain, setCurrentDomain] = useState<string>("EDM");
   const [currentSubdomainIndex, setCurrentSubdomainIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState<AuditQuestion[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [answers, setAnswers] = useState<Record<string, { maturity_level: number; notes: string | null }>>({});
 
-  // In a real app, we would fetch the audit data based on the auditId
+  // Fetch audit data and questions from Supabase
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setAuditData({
-        id: auditId || "new-audit",
-        title: "Audit Tata Kelola TI",
-        domains: Object.keys(mockAuditQuestions),
-      });
-      setLoading(false);
-    }, 500);
-  }, [auditId]);
+    const fetchAudit = async () => {
+      if (!auditId) {
+        navigate("/auditor-dashboard");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        // Fetch audit details
+        const { data: auditData, error: auditError } = await supabase
+          .from("audits")
+          .select("*")
+          .eq("id", auditId)
+          .single();
+
+        if (auditError) {
+          console.error("Error fetching audit:", auditError);
+          toast({
+            title: "Error",
+            description: "Gagal mengambil data audit",
+          });
+          navigate("/auditor-dashboard");
+          return;
+        }
+
+        setAuditData(auditData);
+        
+        // Fetch all COBIT questions
+        const { data: questionData, error: questionError } = await supabase
+          .from("cobit_questions")
+          .select("*");
+
+        if (questionError) {
+          console.error("Error fetching questions:", questionError);
+          toast({
+            title: "Error",
+            description: "Gagal mengambil daftar pertanyaan",
+          });
+          return;
+        }
+
+        // Fetch existing answers for this audit
+        const { data: answersData, error: answersError } = await supabase
+          .from("audit_answers")
+          .select("*")
+          .eq("audit_id", auditId);
+
+        if (answersError) {
+          console.error("Error fetching answers:", answersError);
+        }
+
+        // Organize questions by domains and subdomains
+        const answersMap: Record<string, { maturity_level: number; notes: string | null }> = {};
+        if (answersData) {
+          answersData.forEach((answer: any) => {
+            answersMap[answer.question_id] = {
+              maturity_level: answer.maturity_level,
+              notes: answer.notes
+            };
+          });
+        }
+        setAnswers(answersMap);
+
+        // Organize questions by domain and subdomain
+        const domainMap: Record<string, Domain> = {};
+        
+        questionData.forEach((question: any) => {
+          const domainId = question.domain_id;
+          const subdomainId = question.subdomain_id;
+          
+          if (!domainMap[domainId]) {
+            domainMap[domainId] = {
+              id: domainId,
+              name: domainNames[domainId as keyof typeof domainNames] || domainId,
+              subdomains: []
+            };
+          }
+          
+          const domain = domainMap[domainId];
+          let subdomain = domain.subdomains.find(sd => sd.id === subdomainId);
+          
+          if (!subdomain) {
+            subdomain = {
+              id: subdomainId,
+              name: subdomainNames[subdomainId as keyof typeof subdomainNames] || subdomainId,
+              questions: []
+            };
+            domain.subdomains.push(subdomain);
+          }
+          
+          const questionWithAnswer = {
+            ...question,
+            answer: answersMap[question.id] || undefined
+          };
+          
+          subdomain.questions.push(questionWithAnswer);
+        });
+        
+        const domainsArray = Object.values(domainMap);
+        setDomains(domainsArray);
+        
+        if (domainsArray.length > 0) {
+          setCurrentDomain(domainsArray[0].id);
+          if (domainsArray[0].subdomains.length > 0) {
+            setQuestions(domainsArray[0].subdomains[0].questions);
+          }
+        }
+        
+        // Calculate overall progress
+        if (domainsArray.length > 0) {
+          const totalQuestions = domainsArray.flatMap(domain => 
+            domain.subdomains.flatMap(subdomain => subdomain.questions)
+          ).length;
+          
+          const answeredQuestions = Object.keys(answersMap).length;
+          setProgress((answeredQuestions / totalQuestions) * 100);
+        }
+      } catch (error) {
+        console.error("Error in audit checklist:", error);
+        toast({
+          title: "Error",
+          description: "Terjadi kesalahan saat memuat data audit",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAudit();
+  }, [auditId, navigate, toast, user]);
 
   useEffect(() => {
-    if (currentDomain && mockAuditQuestions[currentDomain]) {
-      setQuestions(
-        mockAuditQuestions[currentDomain].subdomains[currentSubdomainIndex]?.questions || []
-      );
+    if (domains.length > 0 && currentDomain) {
+      const domain = domains.find(d => d.id === currentDomain);
+      if (domain && domain.subdomains.length > 0 && domain.subdomains[currentSubdomainIndex]) {
+        setQuestions(domain.subdomains[currentSubdomainIndex].questions);
+      }
     }
-  }, [currentDomain, currentSubdomainIndex]);
+  }, [currentDomain, currentSubdomainIndex, domains]);
 
-  useEffect(() => {
-    // Calculate overall progress
-    if (auditData) {
-      const totalQuestions = Object.values(mockAuditQuestions).flatMap(
-        domain => domain.subdomains.flatMap(subdomain => subdomain.questions)
+  const handleMaturityLevelChange = async (questionId: string, value: string) => {
+    const maturityLevel = parseInt(value);
+    
+    // Update local state
+    const newAnswers = { ...answers };
+    newAnswers[questionId] = {
+      maturity_level: maturityLevel,
+      notes: newAnswers[questionId]?.notes || null
+    };
+    setAnswers(newAnswers);
+    
+    // Update questions state for UI
+    setQuestions(questions.map(q => 
+      q.id === questionId 
+        ? { ...q, answer: { maturity_level: maturityLevel, notes: newAnswers[questionId]?.notes || null }}
+        : q
+    ));
+    
+    // Update progress
+    if (domains.length > 0) {
+      const totalQuestions = domains.flatMap(domain => 
+        domain.subdomains.flatMap(subdomain => subdomain.questions)
       ).length;
       
-      const answeredQuestions = Object.values(mockAuditQuestions).flatMap(
-        domain => domain.subdomains.flatMap(subdomain => 
-          subdomain.questions.filter(q => q.answer !== null)
-        )
-      ).length;
-      
+      const answeredQuestions = Object.keys(newAnswers).length;
       setProgress((answeredQuestions / totalQuestions) * 100);
     }
-  }, [auditData, questions]);
-
-  const handleAnswerChange = (questionId, value) => {
-    setQuestions(prev => 
-      prev.map(q => 
-        q.id === questionId ? { ...q, answer: value } : q
-      )
-    );
-
-    // Update the mock data structure (in a real app, this would be an API call)
-    const updatedData = { ...mockAuditQuestions };
-    updatedData[currentDomain].subdomains[currentSubdomainIndex].questions = 
-      updatedData[currentDomain].subdomains[currentSubdomainIndex].questions.map(q => 
-        q.id === questionId ? { ...q, answer: value } : q
-      );
   };
 
-  const handleSave = () => {
-    // In a real app, this would save to the backend
-    toast({
-      title: "Kemajuan Disimpan",
-      description: "Jawaban audit Anda telah disimpan",
-    });
+  const handleNotesChange = (questionId: string, notes: string) => {
+    // Update local state
+    const newAnswers = { ...answers };
+    newAnswers[questionId] = {
+      maturity_level: newAnswers[questionId]?.maturity_level || 0,
+      notes: notes
+    };
+    setAnswers(newAnswers);
+    
+    // Update questions state for UI
+    setQuestions(questions.map(q => 
+      q.id === questionId 
+        ? { ...q, answer: { maturity_level: newAnswers[questionId]?.maturity_level || 0, notes: notes }}
+        : q
+    ));
+  };
+
+  const saveAnswers = async () => {
+    if (!auditId) return;
+    
+    try {
+      setSaving(true);
+      
+      // Prepare the data for upsert
+      const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
+        audit_id: auditId,
+        question_id: questionId,
+        maturity_level: answer.maturity_level,
+        notes: answer.notes
+      }));
+      
+      // Delete existing answers to prevent duplicates
+      const { error: deleteError } = await supabase
+        .from("audit_answers")
+        .delete()
+        .eq("audit_id", auditId);
+      
+      if (deleteError) {
+        throw deleteError;
+      }
+      
+      // Insert new answers
+      if (answersToSave.length > 0) {
+        const { error } = await supabase
+          .from("audit_answers")
+          .insert(answersToSave);
+        
+        if (error) {
+          throw error;
+        }
+      }
+      
+      toast({
+        title: "Sukses",
+        description: "Jawaban audit berhasil disimpan",
+      });
+    } catch (error) {
+      console.error("Error saving answers:", error);
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan jawaban audit",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const goToNextSubdomain = () => {
-    const currentDomainData = mockAuditQuestions[currentDomain];
-    if (currentSubdomainIndex < currentDomainData.subdomains.length - 1) {
+    const currentDomainObj = domains.find(d => d.id === currentDomain);
+    if (!currentDomainObj) return;
+    
+    if (currentSubdomainIndex < currentDomainObj.subdomains.length - 1) {
       setCurrentSubdomainIndex(currentSubdomainIndex + 1);
     } else {
       // Move to the next domain
-      const domains = Object.keys(mockAuditQuestions);
-      const currentIndex = domains.indexOf(currentDomain);
-      if (currentIndex < domains.length - 1) {
-        setCurrentDomain(domains[currentIndex + 1]);
+      const currentDomainIndex = domains.findIndex(d => d.id === currentDomain);
+      if (currentDomainIndex < domains.length - 1) {
+        setCurrentDomain(domains[currentDomainIndex + 1].id);
         setCurrentSubdomainIndex(0);
       } else {
         // We've reached the end of the audit
@@ -199,11 +360,11 @@ export default function AuditChecklist() {
       setCurrentSubdomainIndex(currentSubdomainIndex - 1);
     } else {
       // Move to the previous domain
-      const domains = Object.keys(mockAuditQuestions);
-      const currentIndex = domains.indexOf(currentDomain);
-      if (currentIndex > 0) {
-        setCurrentDomain(domains[currentIndex - 1]);
-        setCurrentSubdomainIndex(mockAuditQuestions[domains[currentIndex - 1]].subdomains.length - 1);
+      const currentDomainIndex = domains.findIndex(d => d.id === currentDomain);
+      if (currentDomainIndex > 0) {
+        setCurrentDomain(domains[currentDomainIndex - 1].id);
+        const prevDomain = domains[currentDomainIndex - 1];
+        setCurrentSubdomainIndex(prevDomain.subdomains.length - 1);
       }
     }
   };
@@ -216,7 +377,16 @@ export default function AuditChecklist() {
     );
   }
 
-  const currentSubdomain = mockAuditQuestions[currentDomain]?.subdomains[currentSubdomainIndex];
+  const currentDomainObj = domains.find(d => d.id === currentDomain);
+  const currentSubdomain = currentDomainObj?.subdomains[currentSubdomainIndex];
+
+  if (!currentSubdomain) {
+    return (
+      <div className="p-6 flex justify-center">
+        <p>Tidak ada pertanyaan audit yang tersedia.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -233,14 +403,18 @@ export default function AuditChecklist() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>{auditData.title}</CardTitle>
+              <CardTitle>{auditData?.title || "Audit"}</CardTitle>
               <CardDescription className="mt-1">
-                Jawab pertanyaan audit untuk domain COBIT 2019
+                Penilaian tingkat kematangan berdasarkan COBIT 2019
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={handleSave}>
+            <Button 
+              variant="outline" 
+              onClick={saveAnswers}
+              disabled={saving}
+            >
               <Save className="mr-2 h-4 w-4" />
-              Simpan Kemajuan
+              {saving ? "Menyimpan..." : "Simpan Kemajuan"}
             </Button>
           </div>
         </CardHeader>
@@ -256,7 +430,7 @@ export default function AuditChecklist() {
 
           <div className="mb-6">
             <h3 className="text-lg font-medium mb-2">
-              {currentDomain} - {mockAuditQuestions[currentDomain].name}
+              {currentDomain} - {currentDomainObj?.name}
             </h3>
             <h4 className="text-md font-medium text-muted-foreground mb-4">
               {currentSubdomain.id} - {currentSubdomain.name}
@@ -264,23 +438,47 @@ export default function AuditChecklist() {
           </div>
 
           <div className="space-y-6">
-            {questions.map((question) => (
+            {currentSubdomain.questions.map((question) => (
               <div key={question.id} className="border p-4 rounded-md">
-                <div className="flex items-start space-x-3">
-                  <Checkbox 
-                    id={question.id}
-                    checked={question.answer === true}
-                    onCheckedChange={(checked) => {
-                      handleAnswerChange(question.id, checked);
-                    }}
-                  />
-                  <div className="flex-1">
-                    <label 
-                      htmlFor={question.id} 
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      {question.text}
-                    </label>
+                <div className="mb-4">
+                  <h5 className="font-medium mb-2">{question.text}</h5>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">
+                        Tingkat Kematangan
+                      </label>
+                      <Select
+                        value={String(question.answer?.maturity_level || "0")}
+                        onValueChange={(value) => handleMaturityLevelChange(question.id, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih tingkat kematangan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {maturityLevels.map((level) => (
+                            <SelectItem key={level.value} value={String(level.value)}>
+                              {level.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {maturityLevels.find(l => l.value === (question.answer?.maturity_level || 0))?.description}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">
+                        Catatan (Opsional)
+                      </label>
+                      <Textarea
+                        placeholder="Masukkan catatan atau bukti pendukung..."
+                        value={question.answer?.notes || ""}
+                        onChange={(e) => handleNotesChange(question.id, e.target.value)}
+                        className="h-24"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -292,7 +490,7 @@ export default function AuditChecklist() {
           <Button 
             variant="outline" 
             onClick={goToPrevSubdomain}
-            disabled={currentDomain === "EDM" && currentSubdomainIndex === 0}
+            disabled={currentDomain === domains[0]?.id && currentSubdomainIndex === 0}
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Sebelumnya
