@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -476,12 +475,12 @@ export default function AuditChecklist() {
   // Generate background colors for maturity level badges
   const getMaturityBadgeColor = (level: number) => {
     switch (level) {
-      case 0: return "bg-red-100 text-red-800";
-      case 1: return "bg-orange-100 text-orange-800";
-      case 2: return "bg-yellow-100 text-yellow-800";
-      case 3: return "bg-blue-100 text-blue-800";
-      case 4: return "bg-indigo-100 text-indigo-800";
-      case 5: return "bg-green-100 text-green-800";
+      case 0: return "bg-red-100 text-red-800 border-red-300";
+      case 1: return "bg-orange-100 text-orange-800 border-orange-300";
+      case 2: return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case 3: return "bg-blue-100 text-blue-800 border-blue-300";
+      case 4: return "bg-indigo-100 text-indigo-800 border-indigo-300";
+      case 5: return "bg-green-100 text-green-800 border-green-300";
       default: return "bg-gray-100 text-gray-800";
     }
   };
@@ -535,67 +534,70 @@ export default function AuditChecklist() {
             </h4>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
             {currentSubdomain.questions.map((question) => (
               <div 
                 key={question.id} 
-                className={`border p-4 rounded-md ${missingAnswers.includes(question.id) ? 'border-red-500' : ''}`}
+                className={`bg-white border p-6 rounded-lg shadow-sm ${missingAnswers.includes(question.id) ? 'border-red-500' : 'border-gray-200'}`}
               >
-                <div className="mb-4">
-                  <h5 className="font-medium mb-4">{question.text}</h5>
+                <div>
+                  <h5 className="font-medium text-lg mb-6">{question.text}</h5>
                   
                   <div className="flex flex-col gap-6">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">
-                        Tingkat Kematangan <span className="text-red-500">*</span>
-                      </label>
-                      
-                      <div className="mb-2 flex flex-wrap gap-2">
-                        {maturityLevels.map((level) => (
-                          <Badge 
-                            key={level.value}
-                            variant="outline"
-                            className={question.answer?.maturity_level === level.value ? 
-                              getMaturityBadgeColor(level.value) : ""}
-                          >
-                            {level.label} - {level.description.split(':')[0]}
-                          </Badge>
-                        ))}
-                      </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium mb-3 block">
+                          Tingkat Kematangan <span className="text-red-500">*</span>
+                        </label>
+                        
+                        <div className="mb-4 flex flex-wrap gap-2">
+                          {maturityLevels.map((level) => (
+                            <Badge 
+                              key={level.value}
+                              variant="outline"
+                              className={`${question.answer?.maturity_level === level.value ? 
+                                getMaturityBadgeColor(level.value) : ""} px-3 py-1 text-xs border`}
+                            >
+                              Level {level.label}: {level.description.split(':')[0]}
+                            </Badge>
+                          ))}
+                        </div>
 
-                      <ToggleGroup 
-                        type="single" 
-                        value={String(question.answer?.maturity_level || "")}
-                        onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
-                        className="flex flex-wrap gap-2"
-                      >
-                        {maturityLevels.map((level) => (
-                          <ToggleGroupItem 
-                            key={level.value} 
-                            value={String(level.value)}
-                            variant={getMaturityColor(level.value)}
-                            size="lg"
-                            aria-label={`Maturity Level ${level.label}`}
-                          >
-                            {level.label}
-                          </ToggleGroupItem>
-                        ))}
-                      </ToggleGroup>
-                      
-                      {missingAnswers.includes(question.id) && (
-                        <p className="text-xs text-red-500 mt-1">
-                          Tingkat kematangan wajib diisi
-                        </p>
-                      )}
-                      
-                      {question.answer?.maturity_level !== undefined && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
-                        </p>
-                      )}
+                        <ToggleGroup 
+                          type="single" 
+                          value={String(question.answer?.maturity_level ?? "")}
+                          onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
+                          className="flex justify-start flex-wrap gap-2"
+                        >
+                          {maturityLevels.map((level) => (
+                            <ToggleGroupItem 
+                              key={level.value} 
+                              value={String(level.value)}
+                              variant={getMaturityColor(level.value)}
+                              size="lg"
+                              className="w-12 h-12 font-bold shadow-sm"
+                              aria-label={`Maturity Level ${level.label}`}
+                            >
+                              {level.label}
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
+                        
+                        {missingAnswers.includes(question.id) && (
+                          <p className="text-xs text-red-500 mt-2">
+                            Tingkat kematangan wajib diisi
+                          </p>
+                        )}
+                        
+                        {question.answer?.maturity_level !== undefined && (
+                          <p className="text-sm mt-3 p-2 bg-gray-50 rounded border border-gray-100">
+                            {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
-                    <div>
+                    <div className="mt-4">
                       <label className="text-sm font-medium mb-2 block">
                         Catatan (Opsional)
                       </label>
@@ -603,7 +605,7 @@ export default function AuditChecklist() {
                         placeholder="Masukkan catatan atau bukti pendukung..."
                         value={question.answer?.notes || ""}
                         onChange={(e) => handleNotesChange(question.id, e.target.value)}
-                        className="h-24"
+                        className="h-24 border-gray-200 focus:border-gray-300"
                       />
                     </div>
                   </div>
@@ -613,7 +615,7 @@ export default function AuditChecklist() {
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between pt-6 border-t mt-6">
           <Button 
             variant="outline" 
             onClick={goToPrevSubdomain}
