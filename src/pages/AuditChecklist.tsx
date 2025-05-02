@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,17 +15,16 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Define maturity level descriptions
 const maturityLevels = [
-  { value: 0, label: "0", description: "Incomplete: Process is not implemented or fails to achieve its purpose" },
-  { value: 1, label: "1", description: "Performed: Process is implemented and achieves its purpose" },
-  { value: 2, label: "2", description: "Managed: Process is planned, monitored and adjusted" },
-  { value: 3, label: "3", description: "Established: Process is well defined and follows standards" },
-  { value: 4, label: "4", description: "Predictable: Process is measured and controlled" },
-  { value: 5, label: "5", description: "Optimizing: Process is continuously improved" }
+  { value: 0, label: "0 - Incomplete", description: "Process is not implemented or fails to achieve its purpose" },
+  { value: 1, label: "1 - Performed", description: "Process is implemented and achieves its purpose" },
+  { value: 2, label: "2 - Managed", description: "Process is planned, monitored and adjusted" },
+  { value: 3, label: "3 - Established", description: "Process is well defined and follows standards" },
+  { value: 4, label: "4 - Predictable", description: "Process is measured and controlled" },
+  { value: 5, label: "5 - Optimizing", description: "Process is continuously improved" }
 ];
 
 // Define types for our data
@@ -576,55 +574,40 @@ export default function AuditChecklist() {
                   
                   <div className="flex flex-col gap-6">
                     <div>
-                      <label className="text-sm font-medium mb-2 block">
+                      <label className="text-sm font-medium mb-3 block">
                         Tingkat Kematangan <span className="text-red-500">*</span>
                       </label>
                       
                       <div className="flex flex-col space-y-4">
-                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <ToggleGroup 
+                          type="single" 
+                          value={String(question.answer?.maturity_level ?? "")}
+                          onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
+                          className="flex flex-wrap"
+                        >
                           {maturityLevels.map((level) => (
-                            <Badge 
-                              key={level.value}
-                              variant="outline"
-                              className={`${question.answer?.maturity_level === level.value ? 
-                                getMaturityBadgeColor(level.value) : ""} whitespace-nowrap py-1 px-2 text-xs`}
+                            <ToggleGroupItem 
+                              key={level.value} 
+                              value={String(level.value)}
+                              variant={getMaturityColor(level.value)}
+                              className="flex-1 py-3 font-medium text-sm"
+                              aria-label={level.label}
                             >
-                              Level {level.label} - {level.description.split(':')[0]}
-                            </Badge>
+                              {level.label}
+                            </ToggleGroupItem>
                           ))}
-                        </div>
-
-                        <div className="flex items-center gap-6">
-                          <ToggleGroup 
-                            type="single" 
-                            value={String(question.answer?.maturity_level ?? "")}
-                            onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
-                          >
-                            {maturityLevels.map((level) => (
-                              <ToggleGroupItem 
-                                key={level.value} 
-                                value={String(level.value)}
-                                variant={getMaturityColor(level.value)}
-                                size="lg"
-                                className="w-12 h-12 font-bold shadow-sm"
-                                aria-label={`Maturity Level ${level.label}`}
-                              >
-                                {level.label}
-                              </ToggleGroupItem>
-                            ))}
-                          </ToggleGroup>
-                          
-                          {question.answer?.maturity_level !== undefined && (
-                            <p className="text-sm flex-1 px-3 py-2 bg-gray-50 rounded border border-gray-100">
-                              <span className="font-medium">Level {question.answer.maturity_level}:</span>{" "}
-                              {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
-                            </p>
-                          )}
-                        </div>
+                        </ToggleGroup>
                         
                         {missingAnswers.includes(question.id) && (
                           <p className="text-xs text-red-500 mt-1">
                             Tingkat kematangan wajib diisi
+                          </p>
+                        )}
+                        
+                        {question.answer?.maturity_level !== undefined && (
+                          <p className="text-sm px-3 py-2 bg-gray-50 rounded border border-gray-100">
+                            <span className="font-medium">{maturityLevels.find(l => l.value === question.answer?.maturity_level)?.label}:</span>{" "}
+                            {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
                           </p>
                         )}
                       </div>
