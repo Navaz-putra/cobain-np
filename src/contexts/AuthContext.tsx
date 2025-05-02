@@ -59,6 +59,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      // Special case for our superadmin user
+      if (email === "navazputra@students.amikom.ac.id" && password === "@Dede792002") {
+        // Store user data in localStorage for the superadmin
+        localStorage.setItem("cobain_user", JSON.stringify({
+          id: "superadmin-id",
+          email: "navazputra@students.amikom.ac.id",
+          name: "Super Admin",
+          role: "admin",
+        }));
+        
+        // Although we're not using Supabase auth in this specific case,
+        // we need to set the user and session state to maintain consistency
+        const superAdminUser = {
+          id: "superadmin-id",
+          email: "navazputra@students.amikom.ac.id",
+          user_metadata: { name: "Super Admin" },
+          name: "Super Admin"
+        };
+        
+        setUser(superAdminUser as User & { name?: string });
+        return true;
+      }
+      
+      // Regular Supabase authentication for other users
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -118,6 +142,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
+    // Clear local storage data first
+    localStorage.removeItem("cobain_user");
+    
+    // Then sign out of Supabase (if using Supabase auth)
     await supabase.auth.signOut();
     setUser(null);
   };

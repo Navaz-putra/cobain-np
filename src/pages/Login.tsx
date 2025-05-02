@@ -135,15 +135,6 @@ export default function Login() {
             </Link>
           </div>
         </CardFooter>
-
-        {/* Demo credentials */}
-        <div className="px-6 pb-6 pt-2">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            <p className="font-semibold mb-1">Kredensial Demo:</p>
-            <p>Admin: admin@cobain.com / admin123</p>
-            <p>Auditor: auditor@cobain.com / auditor123</p>
-          </div>
-        </div>
       </Card>
     </div>
   );
