@@ -104,18 +104,21 @@ export default function StartAudit() {
     navigate("/auditor-dashboard");
   };
 
-  // Handle domain selection - Fixed to prevent infinite loops
+  // Fixed domain selection handling
   const handleDomainToggle = (domainId: string) => {
-    setSelectedDomains(prev => {
-      // Create a new array to avoid reference issues
-      const newSelectedDomains = prev.includes(domainId)
-        ? prev.filter(d => d !== domainId)
-        : [...prev, domainId];
+    // Use a callback function to avoid stale state issues
+    setSelectedDomains((prevDomains) => {
+      const isSelected = prevDomains.includes(domainId);
+      const newDomains = isSelected 
+        ? prevDomains.filter(d => d !== domainId) 
+        : [...prevDomains, domainId];
       
       // Update form value outside of render cycle
-      form.setValue("domains", newSelectedDomains, { shouldValidate: true });
+      setTimeout(() => {
+        form.setValue("domains", newDomains, { shouldValidate: true });
+      }, 0);
       
-      return newSelectedDomains;
+      return newDomains;
     });
   };
 
@@ -301,8 +304,11 @@ export default function StartAudit() {
                                   </div>
                                   <Checkbox 
                                     checked={selectedDomains.includes(domain.id)}
-                                    // Removed onCheckedChange to prevent duplicate state updates
-                                    // The parent Card onClick handles the toggle now
+                                    onChange={(e) => {
+                                      // Prevent event bubbling to avoid duplicate calls
+                                      e.stopPropagation();
+                                      handleDomainToggle(domain.id);
+                                    }}
                                   />
                                 </div>
                               </CardHeader>
