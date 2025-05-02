@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Users, LayoutDashboard, ChartBar, PieChart, BookOpen, FileText, FolderOpen, ShieldCheck, CheckCircle, BarChart3, Award } from "lucide-react";
-
 export default function Landing() {
   const {
     t
@@ -18,11 +17,11 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="md:w-1/2 mb-10 md:mb-0">
-              <h1 className="text-5xl md:text-6xl font-bold mb-4 text-left">
+              <h1 className="text-5xl md:text-6xl font-bold mb-4 text-center">
                 COBAIN
               </h1>
-              <p className="text-xl font-medium mb-6">Sistem Audit Mandiri</p>
-              <p className="text-lg mb-8 opacity-90">
+              <p className="font-medium mb-6 text-2xl text-center">Sistem Audit Mandiri</p>
+              <p className="mb-8 opacity-90 text-center text-lg px-[60px]">
                 {t("landing.description")}
               </p>
               <div className="flex flex-wrap gap-4">
@@ -31,7 +30,7 @@ export default function Landing() {
                       Mulai
                     </Button>
                   </Link> : <Link to="/login">
-                    <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100">
+                    <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100 font-bold mx-[180px]">
                       Mulai
                     </Button>
                   </Link>}

@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { LanguageToggle } from "./LanguageToggle";
@@ -8,26 +7,25 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LogOut, Menu } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-
 export function Navbar() {
-  const { isAuthenticated, logout, user } = useAuth();
-  const { t } = useLanguage();
+  const {
+    isAuthenticated,
+    logout,
+    user
+  } = useAuth();
+  const {
+    t
+  } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-
   const handleLogout = () => {
     logout();
     setIsOpen(false);
   };
-
-  const getLogo = () => (
-    <div className="flex items-center space-x-2">
+  const getLogo = () => <div className="flex items-center space-x-2">
       <img src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" alt="COBAIN Logo" className="h-10 w-10" />
       <span className="text-xl font-bold font-poppins">COBAIN</span>
-    </div>
-  );
-
-  return (
-    <nav className="bg-white dark:bg-gray-900 shadow-md z-50">
+    </div>;
+  return <nav className="bg-white dark:bg-gray-900 shadow-md z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex-shrink-0">
@@ -39,8 +37,7 @@ export function Navbar() {
 
           {/* Desktop menu */}
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
+            {isAuthenticated ? <>
                 <Link to="/">
                   <Button variant="ghost">{t("nav.home")}</Button>
                 </Link>
@@ -50,26 +47,21 @@ export function Navbar() {
                 <Link to="/audit">
                   <Button variant="ghost">{t("nav.audit")}</Button>
                 </Link>
-                {user?.role === "admin" && (
-                  <Link to="/users">
+                {user?.role === "admin" && <Link to="/users">
                     <Button variant="ghost">{t("nav.users")}</Button>
-                  </Link>
-                )}
+                  </Link>}
                 <Button variant="ghost" onClick={logout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   {t("nav.logout")}
                 </Button>
-              </>
-            ) : (
-              <>
+              </> : <>
                 <Link to="/login">
-                  <Button className="bg-cobain-blue hover:bg-cobain-navy">Masuk</Button>
+                  
                 </Link>
                 <Link to="/signup">
-                  <Button variant="outline" className="border-cobain-blue text-cobain-blue hover:bg-cobain-blue/10">Daftar</Button>
+                  
                 </Link>
-              </>
-            )}
+              </>}
           </div>
 
           <div className="hidden md:flex items-center ml-4 space-x-2">
@@ -93,12 +85,8 @@ export function Navbar() {
                     </Button>
                   </Link>
 
-                  {isAuthenticated ? (
-                    <>
-                      <Link 
-                        to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"} 
-                        onClick={() => setIsOpen(false)}
-                      >
+                  {isAuthenticated ? <>
+                      <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"} onClick={() => setIsOpen(false)}>
                         <Button variant="ghost" className="w-full justify-start">
                           {t("nav.dashboard")}
                         </Button>
@@ -108,32 +96,23 @@ export function Navbar() {
                           {t("nav.audit")}
                         </Button>
                       </Link>
-                      {user?.role === "admin" && (
-                        <Link to="/users" onClick={() => setIsOpen(false)}>
+                      {user?.role === "admin" && <Link to="/users" onClick={() => setIsOpen(false)}>
                           <Button variant="ghost" className="w-full justify-start">
                             {t("nav.users")}
                           </Button>
-                        </Link>
-                      )}
-                      <Button 
-                        variant="ghost" 
-                        onClick={handleLogout}
-                        className="w-full justify-start"
-                      >
+                        </Link>}
+                      <Button variant="ghost" onClick={handleLogout} className="w-full justify-start">
                         <LogOut className="h-4 w-4 mr-2" />
                         {t("nav.logout")}
                       </Button>
-                    </>
-                  ) : (
-                    <>
+                    </> : <>
                       <Link to="/login" onClick={() => setIsOpen(false)}>
                         <Button className="w-full bg-cobain-blue hover:bg-cobain-navy">Masuk</Button>
                       </Link>
                       <Link to="/signup" onClick={() => setIsOpen(false)}>
                         <Button variant="outline" className="w-full border-cobain-blue text-cobain-blue hover:bg-cobain-blue/10">Daftar</Button>
                       </Link>
-                    </>
-                  )}
+                    </>}
                   
                   <div className="flex space-x-2 pt-4">
                     <ThemeToggle />
@@ -145,6 +124,5 @@ export function Navbar() {
           </div>
         </div>
       </div>
-    </nav>
-  );
+    </nav>;
 }
