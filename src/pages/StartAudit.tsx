@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -64,7 +63,7 @@ const auditFormSchema = z.object({
   scope: z.string().min(5, {
     message: "Ruang lingkup audit diperlukan.",
   }),
-  domains: z.array(z.string()).nonempty({
+  domains: z.array(z.string()).min(1, {
     message: "Pilih minimal satu domain COBIT.",
   }),
   // Changed this from literal(true) to boolean().refine() to fix error #1
@@ -107,19 +106,16 @@ export default function StartAudit() {
 
   // Handle domain selection
   const handleDomainToggle = (domain: string) => {
-    setSelectedDomains(prev => 
-      prev.includes(domain) 
-        ? prev.filter(d => d !== domain)
-        : [...prev, domain]
-    );
+    // Update the selected domains UI state
+    const newSelectedDomains = selectedDomains.includes(domain) 
+      ? selectedDomains.filter(d => d !== domain)
+      : [...selectedDomains, domain];
     
-    // Update form value - fix for error #2
-    const currentDomains = form.getValues("domains");
-    const updatedDomains = currentDomains.includes(domain)
-      ? currentDomains.filter(d => d !== domain)
-      : [...currentDomains, domain];
+    setSelectedDomains(newSelectedDomains);
     
-    form.setValue("domains", updatedDomains, { shouldValidate: true });
+    // Fix for error #2: Ensure we're working with the correct type for domains array
+    // We're now using .min(1) instead of .nonempty() in the schema
+    form.setValue("domains", newSelectedDomains, { shouldValidate: true });
   };
 
   // Check authentication
