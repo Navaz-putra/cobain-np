@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -16,13 +15,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, FileText,
-  Info, Settings, Layout, Award
+  Info, Settings, Layout, Award, User, LogOut, Key
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PDFReport } from "@/components/PDFReport";
 import { GettingStartedGuide } from "@/components/GettingStartedGuide";
 import { MaturityLevelInfo } from "@/components/MaturityLevelInfo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Mock audit data
 const mockAudits = [
@@ -76,11 +78,18 @@ const mockActivities = [
 
 export default function AuditorDashboard() {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   
   // Fetch user's audits from the database
   useEffect(() => {
@@ -114,6 +123,65 @@ export default function AuditorDashboard() {
     
     fetchAudits();
   }, [user, toast]);
+
+  // Handle password change
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Password baru tidak cocok dengan konfirmasi",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setChangingPassword(true);
+      
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Sukses",
+        description: "Password berhasil diubah"
+      });
+      
+      // Reset form
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setAccountDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Gagal mengubah password",
+        variant: "destructive"
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+  
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+      toast({
+        title: "Sukses",
+        description: "Anda berhasil keluar"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal keluar dari akun",
+        variant: "destructive"
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -208,6 +276,64 @@ export default function AuditorDashboard() {
           </div>
         </div>
 
+        {/* User Account Settings Dialog */}
+        <Dialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Pengaturan Akun</DialogTitle>
+              <DialogDescription>
+                Ubah password atau keluar dari akun Anda di sini.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="current-password" className="text-right">Password Saat Ini</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="new-password" className="text-right">Password Baru</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="confirm-password" className="text-right">Konfirmasi Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+            <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={handleLogout} variant="outline" className="w-full sm:w-auto">
+                <LogOut className="mr-2 h-4 w-4" />
+                Keluar
+              </Button>
+              <Button onClick={handleChangePassword} disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword} className="w-full sm:w-auto">
+                {changingPassword ? (
+                  <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                ) : (
+                  <Key className="mr-2 h-4 w-4" />
+                )}
+                Ubah Password
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Info and Quick Links */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2">
@@ -220,20 +346,33 @@ export default function AuditorDashboard() {
 
         {/* Dashboard Content */}
         <Tabs defaultValue="current-audits" className="mb-6">
-          <TabsList className="bg-background/80 backdrop-blur-sm">
-            <TabsTrigger value="current-audits" className="flex items-center">
-              <Layout className="mr-2 h-4 w-4" />
-              Audit Saya
-            </TabsTrigger>
-            <TabsTrigger value="stats" className="flex items-center">
-              <BarChart className="mr-2 h-4 w-4" />
-              Statistik
-            </TabsTrigger>
-            <TabsTrigger value="activities" className="flex items-center">
-              <Clock className="mr-2 h-4 w-4" />
-              Aktivitas
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex justify-between items-center">
+            <TabsList className="bg-background/80 backdrop-blur-sm">
+              <TabsTrigger value="current-audits" className="flex items-center">
+                <Layout className="mr-2 h-4 w-4" />
+                Audit Saya
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="flex items-center">
+                <BarChart className="mr-2 h-4 w-4" />
+                Statistik
+              </TabsTrigger>
+              <TabsTrigger value="activities" className="flex items-center">
+                <Clock className="mr-2 h-4 w-4" />
+                Aktivitas
+              </TabsTrigger>
+            </TabsList>
+            
+            {/* Account Settings Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2" 
+              onClick={() => setAccountDialogOpen(true)}
+            >
+              <User className="h-4 w-4" />
+              <span className="hidden sm:inline">Pengaturan Akun</span>
+            </Button>
+          </div>
 
           <TabsContent value="current-audits" className="pt-4">
             <Card className="shadow-md border-gray-200 dark:border-gray-800">

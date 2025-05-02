@@ -24,13 +24,13 @@ export default function Landing() {
               <p className="mb-8 opacity-90 text-center text-lg px-[60px]">
                 {t("landing.description")}
               </p>
-              <div className="flex flex-wrap gap-4">
+              <div className="flex justify-center w-full">
                 {isAuthenticated ? <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
-                    <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100">
+                    <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100 font-bold">
                       Mulai
                     </Button>
                   </Link> : <Link to="/login">
-                    <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100 font-bold mx-[180px]">
+                    <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100 font-bold">
                       Mulai
                     </Button>
                   </Link>}
