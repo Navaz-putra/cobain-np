@@ -115,12 +115,15 @@ const translations = {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("en");
+  const [language, setLanguageState] = useState<Language>("id");
 
   useEffect(() => {
     const storedLanguage = localStorage.getItem("language") as Language | null;
     if (storedLanguage) {
       setLanguageState(storedLanguage);
+    } else {
+      // Set Indonesian as default and save to localStorage
+      localStorage.setItem("language", "id");
     }
   }, []);
 

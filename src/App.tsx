@@ -15,7 +15,9 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AuditorDashboard from "@/pages/AuditorDashboard";
+import StartAudit from "@/pages/StartAudit";
 import NotFound from "@/pages/NotFound";
+import Index from "@/pages/Index";
 
 const queryClient = new QueryClient();
 
@@ -32,10 +34,12 @@ const App = () => (
                 <Navbar />
                 <main className="flex-grow">
                   <Routes>
-                    <Route path="/" element={<Landing />} />
+                    <Route path="/" element={<Index />} />
+                    <Route path="/landing" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/admin-dashboard" element={<AdminDashboard />} />
                     <Route path="/auditor-dashboard" element={<AuditorDashboard />} />
+                    <Route path="/start-audit" element={<StartAudit />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>

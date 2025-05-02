@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -16,19 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, AlertCircle 
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link } from "react-router-dom";
 
 // Mock audit data
 const mockAudits = [
@@ -84,6 +71,7 @@ export default function AuditorDashboard() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isStartAuditDialogOpen, setIsStartAuditDialogOpen] = useState(false);
   
   // New audit form state
@@ -143,14 +131,14 @@ export default function AuditorDashboard() {
         {/* Welcome Card */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Welcome, {user?.name}!</CardTitle>
+            <CardTitle>Selamat Datang, {user?.name}!</CardTitle>
             <CardDescription>{t("auditor.welcome")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                As an auditor, you can conduct COBIT 2019 assessments, track your progress,
-                and generate reports. Use the dashboard to manage your audit activities.
+                Sebagai auditor, Anda dapat melakukan penilaian COBIT 2019, melacak kemajuan Anda, 
+                dan menghasilkan laporan. Gunakan dasbor untuk mengelola aktivitas audit Anda.
               </p>
               <div className="flex justify-center">
                 <img 
@@ -166,71 +154,16 @@ export default function AuditorDashboard() {
         {/* Quick Actions */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common auditor tasks</CardDescription>
+            <CardTitle>Aksi Cepat</CardTitle>
+            <CardDescription>Tugas auditor umum</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Dialog open={isStartAuditDialogOpen} onOpenChange={setIsStartAuditDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full justify-start" variant="outline">
-                  <ClipboardCheck className="mr-2 h-4 w-4" />
-                  {t("auditor.startAudit")}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Start New Audit</DialogTitle>
-                  <DialogDescription>
-                    Create a new COBIT 2019 assessment
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="title" className="text-right">
-                      Title
-                    </Label>
-                    <Input
-                      id="title"
-                      value={newAudit.title}
-                      onChange={(e) => setNewAudit({ ...newAudit, title: e.target.value })}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="date" className="text-right">
-                      Date
-                    </Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={newAudit.date}
-                      onChange={(e) => setNewAudit({ ...newAudit, date: e.target.value })}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="domains" className="text-right">
-                      Domains
-                    </Label>
-                    <Select>
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select domains" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="EDM">EDM - Evaluate, Direct, Monitor</SelectItem>
-                        <SelectItem value="APO">APO - Align, Plan, Organize</SelectItem>
-                        <SelectItem value="BAI">BAI - Build, Acquire, Implement</SelectItem>
-                        <SelectItem value="DSS">DSS - Deliver, Service, Support</SelectItem>
-                        <SelectItem value="MEA">MEA - Monitor, Evaluate, Assess</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleStartAudit}>Start Audit</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Link to="/start-audit">
+              <Button className="w-full justify-start" variant="outline">
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                {t("auditor.startAudit")}
+              </Button>
+            </Link>
 
             <Button className="w-full justify-start" variant="outline">
               <FileCheck className="mr-2 h-4 w-4" />
@@ -297,8 +230,8 @@ export default function AuditorDashboard() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle>My Audits</CardTitle>
-              <CardDescription>List of your COBIT 2019 assessments</CardDescription>
+              <CardTitle>Audit Saya</CardTitle>
+              <CardDescription>Daftar penilaian COBIT 2019 Anda</CardDescription>
             </CardHeader>
             <CardContent>
               {mockAudits.length > 0 ? (
@@ -311,11 +244,11 @@ export default function AuditorDashboard() {
                       <div className="flex-1">
                         <h4 className="font-medium">{audit.title}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Date: {audit.date}
+                          Tanggal: {audit.date}
                         </p>
                         <div className="mt-2 flex items-center space-x-2">
                           <div className="text-sm">
-                            Domains: {audit.domains.join(", ")}
+                            Domain: {audit.domains.join(", ")}
                           </div>
                         </div>
                       </div>
@@ -324,13 +257,13 @@ export default function AuditorDashboard() {
                         <div className="mb-2">{getStatusBadge(audit.status)}</div>
                         <div className="w-full sm:w-32 flex flex-col">
                           <div className="flex justify-between text-xs mb-1">
-                            <span>Progress</span>
+                            <span>Progres</span>
                             <span>{audit.progress}%</span>
                           </div>
                           <Progress value={audit.progress} className="h-2" />
                         </div>
                         <Button className="mt-2" variant="outline" size="sm">
-                          <span>View</span>
+                          <span>Lihat</span>
                           <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                       </div>
@@ -342,18 +275,13 @@ export default function AuditorDashboard() {
                   <div className="flex justify-center mb-4">
                     <ClipboardCheck className="h-12 w-12 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium mb-2">No Audits Yet</h3>
+                  <h3 className="text-lg font-medium mb-2">Belum Ada Audit</h3>
                   <p className="text-muted-foreground mb-4">
-                    You haven't created any audits yet.
+                    Anda belum membuat audit apapun.
                   </p>
-                  <Dialog
-                    open={isStartAuditDialogOpen}
-                    onOpenChange={setIsStartAuditDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button>Start Your First Audit</Button>
-                    </DialogTrigger>
-                  </Dialog>
+                  <Link to="/start-audit">
+                    <Button>Mulai Audit Pertama Anda</Button>
+                  </Link>
                 </div>
               )}
             </CardContent>
@@ -363,8 +291,8 @@ export default function AuditorDashboard() {
         {/* Recent Activity */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Your latest actions</CardDescription>
+            <CardTitle>Aktivitas Terbaru</CardTitle>
+            <CardDescription>Tindakan terbaru Anda</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -388,7 +316,7 @@ export default function AuditorDashboard() {
           </CardContent>
           <CardFooter>
             <Button variant="ghost" className="w-full">
-              View All Activity
+              Lihat Semua Aktivitas
             </Button>
           </CardFooter>
         </Card>
@@ -400,15 +328,15 @@ export default function AuditorDashboard() {
           <CardHeader className="pb-2">
             <div className="flex items-center">
               <AlertCircle className="h-5 w-5 mr-2 text-amber-500" />
-              <CardTitle className="text-amber-600 dark:text-amber-400">Notifications</CardTitle>
+              <CardTitle className="text-amber-600 dark:text-amber-400">Notifikasi</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-start space-x-4 py-2">
                 <div className="text-sm">
-                  <span className="font-medium">Annual IT Governance Audit</span> - 
-                  The deadline for completing this audit is approaching (14 days remaining).
+                  <span className="font-medium">Audit Tata Kelola TI Tahunan</span> - 
+                  Batas waktu untuk menyelesaikan audit ini akan segera berakhir (14 hari tersisa).
                 </div>
               </div>
             </div>

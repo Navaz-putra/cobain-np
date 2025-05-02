@@ -17,7 +17,7 @@ const Index = () => {
       }
     } else {
       // If not authenticated, redirect to landing page
-      navigate("/");
+      navigate("/landing");
     }
   }, [navigate, isAuthenticated, user]);
 
