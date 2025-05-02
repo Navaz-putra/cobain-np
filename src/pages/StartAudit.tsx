@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -66,7 +67,6 @@ const auditFormSchema = z.object({
   domains: z.array(z.string()).min(1, {
     message: "Pilih minimal satu domain COBIT.",
   }),
-  // Changed this from literal(true) to boolean().refine() to fix error #1
   agreeToTerms: z.boolean().refine(val => val === true, {
     message: "Anda harus menyetujui syarat dan ketentuan.",
   }),
@@ -90,7 +90,7 @@ export default function StartAudit() {
       organization: "",
       scope: "",
       domains: [],
-      agreeToTerms: false, // This is now allowed with our schema fix
+      agreeToTerms: false,
     },
   });
 
@@ -104,18 +104,19 @@ export default function StartAudit() {
     navigate("/auditor-dashboard");
   };
 
-  // Handle domain selection
-  const handleDomainToggle = (domain: string) => {
-    // Update the selected domains UI state
-    const newSelectedDomains = selectedDomains.includes(domain) 
-      ? selectedDomains.filter(d => d !== domain)
-      : [...selectedDomains, domain];
-    
-    setSelectedDomains(newSelectedDomains);
-    
-    // Fix for error #2: Ensure we're working with the correct type for domains array
-    // We're now using .min(1) instead of .nonempty() in the schema
-    form.setValue("domains", newSelectedDomains, { shouldValidate: true });
+  // Handle domain selection - Fixed to prevent infinite loops
+  const handleDomainToggle = (domainId: string) => {
+    setSelectedDomains(prev => {
+      // Create a new array to avoid reference issues
+      const newSelectedDomains = prev.includes(domainId)
+        ? prev.filter(d => d !== domainId)
+        : [...prev, domainId];
+      
+      // Update form value outside of render cycle
+      form.setValue("domains", newSelectedDomains, { shouldValidate: true });
+      
+      return newSelectedDomains;
+    });
   };
 
   // Check authentication
@@ -300,7 +301,8 @@ export default function StartAudit() {
                                   </div>
                                   <Checkbox 
                                     checked={selectedDomains.includes(domain.id)}
-                                    onCheckedChange={() => handleDomainToggle(domain.id)}
+                                    // Removed onCheckedChange to prevent duplicate state updates
+                                    // The parent Card onClick handles the toggle now
                                   />
                                 </div>
                               </CardHeader>
