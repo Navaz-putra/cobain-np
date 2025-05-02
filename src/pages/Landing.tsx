@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Users, LayoutDashboard, ChartBar, PieChart, BookOpen, 
-  FileText, FolderOpen, ShieldCheck 
+  FileText, FolderOpen, ShieldCheck, CheckCircle, BarChart3, Award
 } from "lucide-react";
 
 export default function Landing() {
@@ -51,6 +51,51 @@ export default function Landing() {
                 alt="COBAIN Logo" 
                 className="w-64 h-64 object-contain"
               />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Header section with COBIT 2019 overview */}
+      <section className="py-16 px-6 bg-white dark:bg-gray-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">COBIT 2019 Audit Framework</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+              Comprehensive Online-Based Audit Instrument (COBAIN) is an integrated platform designed to simplify 
+              and streamline the implementation of COBIT 2019 framework for IT governance and management.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+              <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+                <CheckCircle className="h-6 w-6 text-cobain-blue" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Streamlined Assessment</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Simplifies the complex COBIT 2019 assessment process with structured questionnaires and guided workflows.
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+              <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+                <BarChart3 className="h-6 w-6 text-cobain-blue" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Detailed Analysis</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Provides comprehensive gap analysis and visualization between current and target maturity levels.
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+              <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
+                <Award className="h-6 w-6 text-cobain-blue" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Expert Recommendations</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Generates actionable recommendations based on assessment results to improve IT governance.
+              </p>
             </div>
           </div>
         </div>
@@ -154,8 +199,93 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Benefits Section */}
       <section className="py-16 px-6 bg-white dark:bg-gray-950">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12">Benefits of Using COBAIN</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className="flex flex-col">
+              <div className="flex items-start mb-4">
+                <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Standardized Assessment Process</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Ensures consistent application of COBIT 2019 framework across your organization.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start mb-4">
+                <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Time and Resource Efficiency</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Reduces the time and effort required to conduct comprehensive IT governance assessments.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Evidence-Based Approach</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Supports documentation management for audit evidence and compliance purposes.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col">
+              <div className="flex items-start mb-4">
+                <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Data-Driven Decision Making</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Provides actionable insights through comprehensive visualization and reporting.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start mb-4">
+                <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Continuous Improvement</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Enables tracking of improvement initiatives and progress against target maturity levels.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start">
+                <div className="bg-green-100 dark:bg-green-900 p-2 rounded-full mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Regulatory Compliance</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Helps organizations meet regulatory requirements through structured governance frameworks.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 px-6 bg-cobain-blue/10 dark:bg-gray-800">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to start your audit journey?</h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
@@ -166,6 +296,52 @@ export default function Landing() {
               Get Started Now
             </Button>
           </Link>
+        </div>
+      </section>
+
+      {/* Branding footer */}
+      <section className="bg-gray-100 dark:bg-gray-900 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="md:w-1/2 mb-8 md:mb-0 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start mb-4">
+                <img 
+                  src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" 
+                  alt="COBAIN Logo" 
+                  className="h-16 w-16 mr-4" 
+                />
+                <h3 className="text-2xl font-bold">COBAIN</h3>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 max-w-md">
+                Empowering organizations to achieve IT governance excellence through comprehensive COBIT 2019 
+                assessment and continuous improvement.
+              </p>
+            </div>
+            
+            <div className="md:w-1/2">
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <h4 className="font-semibold text-lg mb-4">Features</h4>
+                  <ul className="space-y-2">
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Assessment</a></li>
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Gap Analysis</a></li>
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Recommendations</a></li>
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Reporting</a></li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4 className="font-semibold text-lg mb-4">Resources</h4>
+                  <ul className="space-y-2">
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Documentation</a></li>
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">COBIT Guide</a></li>
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Best Practices</a></li>
+                    <li><a href="#" className="text-gray-600 hover:text-cobain-blue dark:text-gray-400">Support</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
