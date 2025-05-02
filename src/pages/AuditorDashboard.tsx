@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -14,9 +15,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, AlertCircle 
+  ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, FilePdf 
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { generateAuditReport } from "@/utils/reportGenerator";
 
 // Mock audit data
 const mockAudits = [
@@ -136,6 +138,28 @@ export default function AuditorDashboard() {
         return null;
     }
   };
+  
+  const handleGenerateReport = async (auditId: string) => {
+    try {
+      toast({
+        title: "Generating Report",
+        description: "Please wait while we generate your PDF report..."
+      });
+      
+      await generateAuditReport(auditId);
+      
+      toast({
+        title: "Success",
+        description: "Report has been generated and downloaded"
+      });
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate audit report"
+      });
+    }
+  };
 
   const getAuditProgress = async (auditId: string) => {
     try {
@@ -215,10 +239,16 @@ export default function AuditorDashboard() {
               </Link>
             )}
 
-            <Button className="w-full justify-start" variant="outline">
-              <BarChart className="mr-2 h-4 w-4" />
-              {t("auditor.viewResults")}
-            </Button>
+            {audits.length > 0 && (
+              <Button 
+                className="w-full justify-start" 
+                variant="outline"
+                onClick={() => handleGenerateReport(audits[0]?.id)}
+              >
+                <FilePdf className="mr-2 h-4 w-4" />
+                {t("auditor.viewResults")}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -305,12 +335,22 @@ export default function AuditorDashboard() {
 
                       <div className="sm:text-right flex flex-col justify-between items-start sm:items-end">
                         <div className="mb-2">{getStatusBadge(audit.status)}</div>
-                        <Link to={`/audit-checklist/${audit.id}`}>
-                          <Button className="mt-2" variant="outline" size="sm">
-                            <span>Lihat</span>
-                            <ChevronRight className="ml-2 h-4 w-4" />
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => handleGenerateReport(audit.id)} 
+                            variant="outline" 
+                            size="sm"
+                          >
+                            <FilePdf className="mr-2 h-4 w-4" />
+                            <span>Laporan</span>
                           </Button>
-                        </Link>
+                          <Link to={`/audit-checklist/${audit.id}`}>
+                            <Button variant="outline" size="sm">
+                              <span>Lihat</span>
+                              <ChevronRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -364,28 +404,6 @@ export default function AuditorDashboard() {
               Lihat Semua Aktivitas
             </Button>
           </CardFooter>
-        </Card>
-      </div>
-
-      {/* Notifications */}
-      <div className="mt-6">
-        <Card className="border-amber-300 dark:border-amber-700">
-          <CardHeader className="pb-2">
-            <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2 text-amber-500" />
-              <CardTitle className="text-amber-600 dark:text-amber-400">Notifikasi</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-start space-x-4 py-2">
-                <div className="text-sm">
-                  <span className="font-medium">Audit Tata Kelola TI Tahunan</span> - 
-                  Batas waktu untuk menyelesaikan audit ini akan segera berakhir (14 hari tersisa).
-                </div>
-              </div>
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>
