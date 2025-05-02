@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ interface AuditQuestion {
     maturity_level: number;
     notes: string | null;
   };
+  index?: number; // Add index property to track question numbers
 }
 
 interface Domain {
@@ -129,6 +131,7 @@ export default function AuditChecklist() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [answers, setAnswers] = useState<Record<string, { maturity_level: number; notes: string | null }>>({});
   const [missingAnswers, setMissingAnswers] = useState<string[]>([]);
+  const [remainingDomains, setRemainingDomains] = useState<number>(0);
 
   // Fetch audit data and questions from Supabase
   useEffect(() => {
@@ -229,7 +232,8 @@ export default function AuditChecklist() {
           
           const questionWithAnswer = {
             ...question,
-            answer: answersMap[question.id] || undefined
+            answer: answersMap[question.id] || undefined,
+            index: subdomain.questions.length + 1 // Add index for question numbering
           };
           
           subdomain.questions.push(questionWithAnswer);
@@ -253,6 +257,9 @@ export default function AuditChecklist() {
           
           const answeredQuestions = Object.keys(answersMap).length;
           setProgress((answeredQuestions / totalQuestions) * 100);
+          
+          // Calculate remaining domains
+          calculateRemainingDomains(domainsArray, answersMap);
         }
       } catch (error) {
         console.error("Error in audit checklist:", error);
@@ -267,6 +274,22 @@ export default function AuditChecklist() {
 
     fetchAudit();
   }, [auditId, navigate, toast, user]);
+
+  // Calculate remaining domains to complete
+  const calculateRemainingDomains = (domains: Domain[], answers: Record<string, any>) => {
+    let remaining = 0;
+    
+    domains.forEach(domain => {
+      const domainQuestions = domain.subdomains.flatMap(sd => sd.questions);
+      const answeredDomainQuestions = domainQuestions.filter(q => answers[q.id]);
+      
+      if (answeredDomainQuestions.length < domainQuestions.length) {
+        remaining++;
+      }
+    });
+    
+    setRemainingDomains(remaining);
+  };
 
   // Update questions when domain or subdomain changes
   useEffect(() => {
@@ -309,6 +332,9 @@ export default function AuditChecklist() {
       
       const answeredQuestions = Object.keys(newAnswers).length;
       setProgress((answeredQuestions / totalQuestions) * 100);
+      
+      // Recalculate remaining domains
+      calculateRemainingDomains(domains, newAnswers);
     }
   };
 
@@ -485,6 +511,25 @@ export default function AuditChecklist() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="p-6 flex justify-center">
+        <p>Memuat data audit...</p>
+      </div>
+    );
+  }
+
+  const currentDomainObj = domains.find(d => d.id === currentDomain);
+  const currentSubdomain = currentDomainObj?.subdomains[currentSubdomainIndex];
+
+  if (!currentSubdomain) {
+    return (
+      <div className="p-6 flex justify-center">
+        <p>Tidak ada pertanyaan audit yang tersedia.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Button 
@@ -541,16 +586,21 @@ export default function AuditChecklist() {
                 className={`bg-white border p-6 rounded-lg shadow-sm ${missingAnswers.includes(question.id) ? 'border-red-500' : 'border-gray-200'}`}
               >
                 <div>
-                  <h5 className="font-medium text-lg mb-6">{question.text}</h5>
+                  <h5 className="font-medium text-lg mb-6">
+                    <span className="inline-flex items-center justify-center bg-primary text-white rounded-full w-6 h-6 text-sm mr-2">
+                      {question.index}
+                    </span>
+                    {question.text}
+                  </h5>
                   
                   <div className="flex flex-col gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium mb-3 block">
-                          Tingkat Kematangan <span className="text-red-500">*</span>
-                        </label>
-                        
-                        <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Tingkat Kematangan <span className="text-red-500">*</span>
+                      </label>
+                      
+                      <div className="flex flex-col space-y-4">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1">
                           {maturityLevels.map((level) => (
                             <Badge 
                               key={level.value}
@@ -563,42 +613,43 @@ export default function AuditChecklist() {
                           ))}
                         </div>
 
-                        <ToggleGroup 
-                          type="single" 
-                          value={String(question.answer?.maturity_level ?? "")}
-                          onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
-                          className="flex justify-start gap-1 mb-4"
-                        >
-                          {maturityLevels.map((level) => (
-                            <ToggleGroupItem 
-                              key={level.value} 
-                              value={String(level.value)}
-                              variant={getMaturityColor(level.value)}
-                              size="lg"
-                              className="w-12 h-12 font-bold shadow-sm"
-                              aria-label={`Maturity Level ${level.label}`}
-                            >
-                              {level.label}
-                            </ToggleGroupItem>
-                          ))}
-                        </ToggleGroup>
+                        <div className="flex items-center gap-6">
+                          <ToggleGroup 
+                            type="single" 
+                            value={String(question.answer?.maturity_level ?? "")}
+                            onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
+                          >
+                            {maturityLevels.map((level) => (
+                              <ToggleGroupItem 
+                                key={level.value} 
+                                value={String(level.value)}
+                                variant={getMaturityColor(level.value)}
+                                size="lg"
+                                className="w-12 h-12 font-bold shadow-sm"
+                                aria-label={`Maturity Level ${level.label}`}
+                              >
+                                {level.label}
+                              </ToggleGroupItem>
+                            ))}
+                          </ToggleGroup>
+                          
+                          {question.answer?.maturity_level !== undefined && (
+                            <p className="text-sm flex-1 px-3 py-2 bg-gray-50 rounded border border-gray-100">
+                              <span className="font-medium">Level {question.answer.maturity_level}:</span>{" "}
+                              {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
+                            </p>
+                          )}
+                        </div>
                         
                         {missingAnswers.includes(question.id) && (
-                          <p className="text-xs text-red-500 mt-2">
+                          <p className="text-xs text-red-500 mt-1">
                             Tingkat kematangan wajib diisi
-                          </p>
-                        )}
-                        
-                        {question.answer?.maturity_level !== undefined && (
-                          <p className="text-sm mt-1 p-3 bg-gray-50 rounded border border-gray-100">
-                            <span className="font-medium">Level {question.answer.maturity_level}:</span> {" "}
-                            {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
                           </p>
                         )}
                       </div>
                     </div>
                     
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <label className="text-sm font-medium mb-2 block">
                         Catatan (Opsional)
                       </label>
@@ -628,6 +679,11 @@ export default function AuditChecklist() {
 
           <Button onClick={goToNextSubdomain}>
             Selanjutnya
+            {remainingDomains > 0 && (
+              <span className="ml-2 bg-white text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                {remainingDomains}
+              </span>
+            )}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </CardFooter>

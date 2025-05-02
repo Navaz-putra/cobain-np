@@ -12,12 +12,12 @@ const toggleVariants = cva(
       variant: {
         default: "bg-transparent hover:bg-muted hover:text-muted-foreground",
         outline: "border border-input bg-transparent hover:bg-accent hover:text-accent-foreground",
-        maturity0: "border border-input bg-white hover:bg-red-50 data-[state=on]:bg-red-100 data-[state=on]:text-red-800 data-[state=on]:border-red-300 data-[state=on]:font-semibold",
-        maturity1: "border border-input bg-white hover:bg-orange-50 data-[state=on]:bg-orange-100 data-[state=on]:text-orange-800 data-[state=on]:border-orange-300 data-[state=on]:font-semibold",
-        maturity2: "border border-input bg-white hover:bg-yellow-50 data-[state=on]:bg-yellow-100 data-[state=on]:text-yellow-800 data-[state=on]:border-yellow-300 data-[state=on]:font-semibold",
-        maturity3: "border border-input bg-white hover:bg-blue-50 data-[state=on]:bg-blue-100 data-[state=on]:text-blue-800 data-[state=on]:border-blue-300 data-[state=on]:font-semibold",
-        maturity4: "border border-input bg-white hover:bg-indigo-50 data-[state=on]:bg-indigo-100 data-[state=on]:text-indigo-800 data-[state=on]:border-indigo-300 data-[state=on]:font-semibold",
-        maturity5: "border border-input bg-white hover:bg-green-50 data-[state=on]:bg-green-100 data-[state=on]:text-green-800 data-[state=on]:border-green-300 data-[state=on]:font-semibold",
+        maturity0: "border border-red-300 bg-white hover:bg-red-50 data-[state=on]:bg-red-500 data-[state=on]:text-white data-[state=on]:border-red-500 data-[state=on]:font-semibold",
+        maturity1: "border border-orange-300 bg-white hover:bg-orange-50 data-[state=on]:bg-orange-500 data-[state=on]:text-white data-[state=on]:border-orange-500 data-[state=on]:font-semibold",
+        maturity2: "border border-yellow-300 bg-white hover:bg-yellow-50 data-[state=on]:bg-yellow-500 data-[state=on]:text-white data-[state=on]:border-yellow-500 data-[state=on]:font-semibold",
+        maturity3: "border border-blue-300 bg-white hover:bg-blue-50 data-[state=on]:bg-blue-500 data-[state=on]:text-white data-[state=on]:border-blue-500 data-[state=on]:font-semibold",
+        maturity4: "border border-indigo-300 bg-white hover:bg-indigo-50 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:border-indigo-500 data-[state=on]:font-semibold",
+        maturity5: "border border-green-300 bg-white hover:bg-green-50 data-[state=on]:bg-green-500 data-[state=on]:text-white data-[state=on]:border-green-500 data-[state=on]:font-semibold",
       },
       size: {
         default: "h-10 px-3",
