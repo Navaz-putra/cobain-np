@@ -41,8 +41,11 @@ export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [minimized, setMinimized] = useState(false);
-  const { language, t } = useLanguage();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Always use Indonesian language for the chatbot
+  const language = "id";
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -51,7 +54,7 @@ export function Chatbot() {
         { text: CHATBOT_RESPONSES[language].greeting, isUser: false }
       ]);
     }
-  }, [isOpen, language]);
+  }, [isOpen]);
 
   useEffect(() => {
     // Scroll to bottom of messages
@@ -72,7 +75,7 @@ export function Chatbot() {
       
       const lowerInput = input.toLowerCase();
       
-      if (lowerInput.includes("audit") || lowerInput.includes("assess")) {
+      if (lowerInput.includes("audit") || lowerInput.includes("assess") || lowerInput.includes("nilai")) {
         response = CHATBOT_RESPONSES[language].audit;
       } else if (lowerInput.includes("feature") || lowerInput.includes("fitur")) {
         response = CHATBOT_RESPONSES[language].features;
@@ -110,7 +113,7 @@ export function Chatbot() {
         <Card className="fixed bottom-20 right-6 w-[320px] sm:w-[350px] shadow-xl z-50 border border-gray-200 dark:border-gray-700">
           <CardHeader className="py-3 px-4 flex flex-row items-center justify-between bg-cobain-blue text-white rounded-t-lg">
             <CardTitle className="text-sm font-medium">
-              {t("chatbot.title")}
+              Asisten COBAIN
             </CardTitle>
             <div className="flex space-x-2">
               <Button
@@ -169,7 +172,7 @@ export function Chatbot() {
                   <Input
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={t("chatbot.placeholder")}
+                    placeholder="Tanyakan sesuatu tentang COBAIN..."
                     className="flex-1"
                   />
                   <Button type="submit" size="icon">

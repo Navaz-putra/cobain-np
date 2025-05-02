@@ -41,10 +41,10 @@ const cobitDomains = [
   { id: "MEA", name: "Monitor, Evaluate and Assess", desc: "Memantau kinerja dan kesesuaian dengan tujuan" },
 ];
 
-// Form schema
+// Form schema - updated to make all fields required
 const auditFormSchema = z.object({
-  title: z.string().min(5, {
-    message: "Judul audit harus minimal 5 karakter.",
+  title: z.string().min(3, {
+    message: "Judul audit harus minimal 3 karakter.",
   }),
   description: z.string().min(10, {
     message: "Deskripsi audit harus minimal 10 karakter.",
@@ -143,6 +143,24 @@ export default function StartAudit() {
     }
   }, [user, navigate]);
 
+  // Function to validate current step before proceeding
+  const validateStep = async () => {
+    if (step === 1) {
+      // Validate all fields in step 1
+      const result = await form.trigger(['title', 'description', 'auditDate', 'organization', 'scope']);
+      return result;
+    }
+    return true;
+  };
+
+  // Handle next button click with validation
+  const handleNext = async () => {
+    const isValid = await validateStep();
+    if (isValid) {
+      setStep(step + 1);
+    }
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Button 
@@ -192,7 +210,7 @@ export default function StartAudit() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Judul Audit</FormLabel>
+                        <FormLabel>Judul Audit <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
                           <Input placeholder="Contoh: Audit Tata Kelola TI Tahunan 2025" {...field} />
                         </FormControl>
@@ -209,7 +227,7 @@ export default function StartAudit() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Deskripsi Audit</FormLabel>
+                        <FormLabel>Deskripsi Audit <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder="Jelaskan tujuan dan ruang lingkup audit" 
@@ -231,7 +249,7 @@ export default function StartAudit() {
                       name="auditDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Tanggal Audit</FormLabel>
+                          <FormLabel>Tanggal Audit <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -248,7 +266,7 @@ export default function StartAudit() {
                       name="organization"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Organisasi</FormLabel>
+                          <FormLabel>Organisasi <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
                             <Input placeholder="Nama organisasi yang diaudit" {...field} />
                           </FormControl>
@@ -263,7 +281,7 @@ export default function StartAudit() {
                     name="scope"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Ruang Lingkup</FormLabel>
+                        <FormLabel>Ruang Lingkup <span className="text-red-500">*</span></FormLabel>
                         <FormControl>
                           <Textarea 
                             placeholder="Tentukan ruang lingkup dan batasan audit" 
@@ -378,7 +396,7 @@ export default function StartAudit() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>
-                            Saya menyetujui ketentuan penggunaan COBAIN dan memahami tujuan audit ini
+                            Saya menyetujui ketentuan penggunaan COBAIN dan memahami tujuan audit ini <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormMessage />
                         </div>
@@ -404,7 +422,7 @@ export default function StartAudit() {
           )}
 
           {step < 3 ? (
-            <Button onClick={() => setStep(step + 1)}>
+            <Button onClick={handleNext}>
               Selanjutnya
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
