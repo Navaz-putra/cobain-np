@@ -18,6 +18,7 @@ import EmailConfirmation from "@/pages/EmailConfirmation";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AuditorDashboard from "@/pages/AuditorDashboard";
 import StartAudit from "@/pages/StartAudit";
+import AuditChecklist from "@/pages/AuditChecklist";
 import NotFound from "@/pages/NotFound";
 import Index from "@/pages/Index";
 
@@ -44,6 +45,7 @@ const App = () => (
                     <Route path="/admin-dashboard" element={<AdminDashboard />} />
                     <Route path="/auditor-dashboard" element={<AuditorDashboard />} />
                     <Route path="/start-audit" element={<StartAudit />} />
+                    <Route path="/audit-checklist/:auditId" element={<AuditChecklist />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>

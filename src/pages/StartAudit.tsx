@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -30,13 +29,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { CalendarCheck, ChevronLeft, ChevronRight, FileCheck } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 // Mock COBIT domains
 const cobitDomains = [
@@ -104,7 +96,10 @@ export default function StartAudit() {
       title: "Audit Dibuat",
       description: `Audit ${values.title} berhasil dibuat`,
     });
-    navigate("/auditor-dashboard");
+    
+    // Redirect to the audit checklist page with a mock audit ID
+    // In a real app, we would create the audit in the database and get a real ID
+    navigate("/audit-checklist/new-audit");
   };
 
   // Fixed domain selection handling - now only used if user wants to deselect a domain
