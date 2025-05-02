@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react"; // Changed from FilePdf to FileText
+import { FileText } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,8 +40,9 @@ export const PDFReport: React.FC<PDFReportProps> = ({
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: "Failed to generate audit report"
+        description: "Failed to generate audit report. Please try again."
       });
     }
   };

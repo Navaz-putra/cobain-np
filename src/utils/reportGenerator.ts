@@ -2,12 +2,13 @@
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import autoTable from 'jspdf-autotable';
-import { Chart, registerables } from 'chart.js';
+import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
+
 // Register all chart.js components
 Chart.register(...registerables);
 
 // Domain and subdomain name mappings
-const domainNames = {
+const domainNames: Record<string, string> = {
   "EDM": "Evaluate, Direct and Monitor",
   "APO": "Align, Plan and Organize",
   "BAI": "Build, Acquire and Implement",
@@ -15,7 +16,7 @@ const domainNames = {
   "MEA": "Monitor, Evaluate and Assess"
 };
 
-const subdomainNames = {
+const subdomainNames: Record<string, string> = {
   // EDM Subdomains
   "EDM01": "Memastikan Kerangka Tata Kelola Ditetapkan dan Dipelihara",
   "EDM02": "Memastikan Penghantaran Manfaat",
@@ -74,6 +75,20 @@ interface AuditResult {
   notes?: string;
 }
 
+interface DomainMaturityData {
+  domain: string;
+  domainName: string;
+  currentLevel: number;
+  targetLevel: number;
+}
+
+interface Recommendation {
+  domain: string;
+  description: string;
+  priority: 'High' | 'Medium' | 'Low';
+  impact: string;
+}
+
 export const generateAuditReport = async (auditId: string) => {
   try {
     // Fetch audit details
@@ -102,13 +117,14 @@ export const generateAuditReport = async (auditId: string) => {
       .eq("audit_id", auditId);
 
     if (answersError) throw answersError;
+    if (!answers || answers.length === 0) throw new Error("No audit answers found");
 
     // Process data for visualization
     const auditResults: AuditResult[] = answers.map((answer) => ({
       domain_id: answer.cobit_questions.domain_id,
-      domain_name: domainNames[answer.cobit_questions.domain_id],
+      domain_name: domainNames[answer.cobit_questions.domain_id] || answer.cobit_questions.domain_id,
       subdomain_id: answer.cobit_questions.subdomain_id,
-      subdomain_name: subdomainNames[answer.cobit_questions.subdomain_id],
+      subdomain_name: subdomainNames[answer.cobit_questions.subdomain_id] || answer.cobit_questions.subdomain_id,
       question_text: answer.cobit_questions.text,
       maturity_level: answer.maturity_level,
       notes: answer.notes
@@ -151,27 +167,28 @@ export const generateAuditReport = async (auditId: string) => {
     const summaryLines = pdf.splitTextToSize(summary, 170);
     pdf.text(summaryLines, 20, 70);
 
-    // Add Maturity Chart
+    // Add simple text-based report instead of charts to avoid errors
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
     pdf.text("Maturity Assessment Results", 105, 95, {
       align: "center"
     });
 
-    // Create a bar chart for domain maturity levels
-    await addMaturityBarChart(pdf, domainsData, 20, 105);
+    // Add text-based maturity table instead of chart
+    addMaturityTable(pdf, domainsData, 20, 105);
 
     // Add a page break
     pdf.addPage();
 
-    // Add radar chart for gap analysis
+    // Add gap analysis
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
     pdf.text("Gap Analysis", 105, 20, {
       align: "center"
     });
 
-    await addRadarChart(pdf, domainsData, 20, 30);
+    // Add text-based gap analysis instead of radar chart
+    addGapAnalysisTable(pdf, domainsData, 20, 30);
 
     // Add detailed results table
     pdf.addPage();
@@ -202,7 +219,8 @@ export const generateAuditReport = async (auditId: string) => {
       align: "center"
     });
 
-    await addHeatMap(pdf, domainsData, 20, 30);
+    // Add text-based priority map instead of chart
+    addPriorityTable(pdf, domainsData, 20, 30);
 
     // Add footer with page numbers
     const pageCount = pdf.getNumberOfPages();
@@ -220,13 +238,16 @@ export const generateAuditReport = async (auditId: string) => {
 
     // Save the PDF
     pdf.save(`COBIT-Audit-Report-${auditData.organization}-${auditData.audit_date}.pdf`);
+    console.log("PDF generated successfully");
+    
+    return true;
   } catch (error) {
     console.error("Error generating report:", error);
     throw error;
   }
 };
 
-const calculateDomainMaturityLevels = (results: AuditResult[]) => {
+const calculateDomainMaturityLevels = (results: AuditResult[]): DomainMaturityData[] => {
   const domainMap: Record<string, { total: number, count: number }> = {};
 
   // Calculate average maturity level for each domain
@@ -250,7 +271,9 @@ const calculateDomainMaturityLevels = (results: AuditResult[]) => {
   }));
 };
 
-const generateExecutiveSummary = (maturityData: any[]) => {
+const generateExecutiveSummary = (maturityData: DomainMaturityData[]): string => {
+  if (!maturityData.length) return "No maturity data available for this audit.";
+  
   const avgMaturity = maturityData.reduce((sum, domain) => sum + domain.currentLevel, 0) / maturityData.length;
 
   // Find highest and lowest domains
@@ -269,10 +292,10 @@ const generateExecutiveSummary = (maturityData: any[]) => {
   return `This report presents the assessment results of a COBIT 2019 audit conducted for ${maturityData.length} domains. \nThe overall organizational IT maturity level is ${avgMaturity.toFixed(2)} out of 5. \nThe highest performing domain is ${highestDomain.domain} (${highestDomain.domainName}) at level ${highestDomain.currentLevel}, \nwhile the lowest performing domain is ${lowestDomain.domain} (${lowestDomain.domainName}) at level ${lowestDomain.currentLevel}. \nThis assessment identifies gaps between current and target maturity levels, and provides targeted recommendations to improve IT governance and management practices.`;
 };
 
-const generateRecommendations = (maturityData: any[]) => {
+const generateRecommendations = (maturityData: DomainMaturityData[]): Recommendation[] => {
   return maturityData.map((domain) => {
     const gap = domain.targetLevel - domain.currentLevel;
-    let priority = 'Low';
+    let priority: 'High' | 'Medium' | 'Low' = 'Low';
     let description = '';
     let impact = '';
 
@@ -310,131 +333,92 @@ const generateRecommendations = (maturityData: any[]) => {
   });
 };
 
-const addMaturityBarChart = async (pdf: jsPDF, data: any[], x: number, y: number) => {
-  // Create canvas and draw chart
-  const canvas = document.createElement('canvas');
-  canvas.width = 550;
-  canvas.height = 300;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error("Could not get canvas context");
+// Replace chart-based functions with table-based alternatives
+const addMaturityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: number): void => {
+  const tableData = data.map(d => [
+    d.domain,
+    d.domainName,
+    d.currentLevel.toString(),
+    d.targetLevel.toString(),
+    (d.targetLevel - d.currentLevel).toFixed(2)
+  ]);
 
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: data.map((d) => d.domain),
-      datasets: [
-        {
-          label: 'Current Level',
-          data: data.map((d) => d.currentLevel),
-          backgroundColor: 'rgba(54, 162, 235, 0.7)',
-          borderColor: 'rgb(54, 162, 235)',
-          borderWidth: 1
-        },
-        {
-          label: 'Target Level',
-          data: data.map((d) => d.targetLevel),
-          backgroundColor: 'rgba(153, 102, 255, 0.5)',
-          borderColor: 'rgb(153, 102, 255)',
-          borderWidth: 1,
-          borderDash: [5, 5]
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 5,
-          title: {
-            display: true,
-            text: 'Maturity Level'
-          }
-        }
-      },
-      plugins: {
-        title: {
-          display: true,
-          text: 'Domain Maturity Levels'
-        },
-        legend: {
-          position: 'bottom'
-        }
-      }
+  autoTable(pdf, {
+    startY: y,
+    head: [["Domain", "Domain Name", "Current Level", "Target Level", "Gap"]],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [80, 80, 80] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 30, halign: 'center' },
+      3: { cellWidth: 30, halign: 'center' },
+      4: { cellWidth: 20, halign: 'center' }
     }
   });
-
-  // Get the chart as an image and add to PDF
-  const dataUrl = chart.toBase64Image();
-  pdf.addImage(dataUrl, 'PNG', x, y, 170, 90);
-
-  // Clean up
-  chart.destroy();
 };
 
-const addRadarChart = async (pdf: jsPDF, data: any[], x: number, y: number) => {
-  // Create canvas and draw chart
-  const canvas = document.createElement('canvas');
-  canvas.width = 500;
-  canvas.height = 400;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error("Could not get canvas context");
+const addGapAnalysisTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: number): void => {
+  // First add a table with the gap analysis data
+  const tableData = data.map(d => {
+    const gap = d.targetLevel - d.currentLevel;
+    let priority = '';
+    
+    if (gap > 3) priority = 'Critical';
+    else if (gap > 2) priority = 'High';
+    else if (gap > 1) priority = 'Medium';
+    else priority = 'Low';
+    
+    return [
+      d.domain,
+      d.domainName,
+      d.currentLevel.toString(),
+      d.targetLevel.toString(),
+      gap.toFixed(2),
+      priority
+    ];
+  });
 
-  const chart = new Chart(ctx, {
-    type: 'radar',
-    data: {
-      labels: data.map((d) => d.domain),
-      datasets: [
-        {
-          label: 'Current Level',
-          data: data.map((d) => d.currentLevel),
-          backgroundColor: 'rgba(54, 162, 235, 0.3)',
-          borderColor: 'rgb(54, 162, 235)',
-          borderWidth: 1,
-          pointBackgroundColor: 'rgb(54, 162, 235)'
-        },
-        {
-          label: 'Target Level',
-          data: data.map((d) => d.targetLevel),
-          backgroundColor: 'rgba(153, 102, 255, 0.1)',
-          borderColor: 'rgb(153, 102, 255)',
-          borderWidth: 1,
-          borderDash: [5, 5],
-          pointBackgroundColor: 'rgb(153, 102, 255)'
-        }
-      ]
+  autoTable(pdf, {
+    startY: y,
+    head: [["Domain", "Domain Name", "Current", "Target", "Gap", "Priority"]],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [80, 80, 80] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 25, halign: 'center' },
+      3: { cellWidth: 25, halign: 'center' },
+      4: { cellWidth: 20, halign: 'center' },
+      5: { cellWidth: 25, halign: 'center' }
     },
-    options: {
-      responsive: true,
-      scales: {
-        r: {
-          beginAtZero: true,
-          max: 5,
-          ticks: {
-            stepSize: 1
-          }
-        }
-      },
-      plugins: {
-        title: {
-          display: true,
-          text: 'Current vs Target Maturity Levels'
-        },
-        legend: {
-          position: 'bottom'
+    didParseCell: function(data) {
+      // Color the priority cell based on value
+      if (data.section === 'body' && data.column.index === 5) {
+        const priority = data.cell.raw?.toString();
+        if (priority === 'Critical') {
+          data.cell.styles.fillColor = [255, 99, 132];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'High') {
+          data.cell.styles.fillColor = [255, 159, 64];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'Medium') {
+          data.cell.styles.fillColor = [255, 205, 86];
+        } else {
+          data.cell.styles.fillColor = [75, 192, 192];
         }
       }
     }
   });
 
-  // Get the chart as an image and add to PDF
-  const dataUrl = chart.toBase64Image();
-  pdf.addImage(dataUrl, 'PNG', x, y, 170, 130);
-
   // Add gap analysis text
+  const finalY = (pdf as any).lastAutoTable?.finalY || (y + 120);
+  
   pdf.setFontSize(12);
   pdf.setTextColor(40, 40, 40);
-  pdf.text("Gap Analysis Summary", 20, 175);
+  pdf.text("Gap Analysis Summary", 20, finalY + 20);
   pdf.setFontSize(10);
   pdf.setTextColor(60, 60, 60);
 
@@ -444,18 +428,15 @@ const addRadarChart = async (pdf: jsPDF, data: any[], x: number, y: number) => {
     return `${d.domain} (${d.domainName}): Current ${d.currentLevel} vs Target ${d.targetLevel} - Gap: ${gap.toFixed(2)}`;
   });
 
-  let yPosition = 185;
+  let yPosition = finalY + 30;
   gapAnalysis.forEach((text) => {
     const lines = pdf.splitTextToSize(text, 170);
     pdf.text(lines, 20, yPosition);
     yPosition += lines.length * 5 + 2;
   });
-
-  // Clean up
-  chart.destroy();
 };
 
-const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: number) => {
+const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: number): void => {
   // Group results by domain and subdomain
   const groupedResults: Record<string, Record<string, AuditResult[]>> = {};
   
@@ -532,7 +513,9 @@ const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: num
         }
       });
 
-      yPos = (pdf.lastAutoTable?.finalY || yPos) + 10;
+      // Get the final Y position after the table was drawn
+      const finalY = (pdf as any).lastAutoTable?.finalY || (yPos + 50);
+      yPos = finalY + 10;
 
       // Check if we need a new page
       if (yPos > 270) {
@@ -552,19 +535,13 @@ const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: num
   });
 };
 
-const addRecommendationsTable = (pdf: jsPDF, recommendations: any[], startY: number) => {
+const addRecommendationsTable = (pdf: jsPDF, recommendations: Recommendation[], startY: number): void => {
   const tableData = recommendations.map((r) => [
     r.domain,
     r.description,
     r.priority,
     r.impact
   ]);
-
-  const priorityColor = (priority: string) => {
-    if (priority === 'High') return [255, 100, 100];
-    if (priority === 'Medium') return [255, 180, 100];
-    return [100, 200, 100];
-  };
 
   autoTable(pdf, {
     startY: startY,
@@ -597,111 +574,120 @@ const addRecommendationsTable = (pdf: jsPDF, recommendations: any[], startY: num
     styles: {
       overflow: 'linebreak'
     },
-    didDrawCell: (data) => {
-      // Color cells in the Priority column based on their value
+    didParseCell: function(data) {
+      // Color the priority cell based on value
       if (data.section === 'body' && data.column.index === 2) {
-        const priority = tableData[data.row.index][2];
-        pdf.setFillColor(...priorityColor(priority));
-        pdf.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(priority, data.cell.x + data.cell.width / 2, data.cell.y + data.cell.height / 2, {
-          align: 'center',
-          baseline: 'middle'
-        });
-        return false; // We've manually drawn the cell content
+        const priority = data.cell.raw?.toString();
+        if (priority === 'High') {
+          data.cell.styles.fillColor = [255, 100, 100];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'Medium') {
+          data.cell.styles.fillColor = [255, 180, 100];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else {
+          data.cell.styles.fillColor = [100, 200, 100];
+          data.cell.styles.textColor = [255, 255, 255];
+        }
       }
-      return true;
     }
   });
 };
 
-const addHeatMap = async (pdf: jsPDF, data: any[], x: number, y: number) => {
-  // Create canvas and draw chart
-  const canvas = document.createElement('canvas');
-  canvas.width = 550;
-  canvas.height = 350;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error("Could not get canvas context");
-
+const addPriorityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: number): void => {
+  // Sort data by gap size (largest to smallest)
   const sortedData = [...data].sort((a, b) => 
     (b.targetLevel - b.currentLevel) - (a.targetLevel - a.currentLevel)
   );
 
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: sortedData.map((d) => d.domain),
-      datasets: [
-        {
-          label: 'Maturity Gap',
-          data: sortedData.map((d) => d.targetLevel - d.currentLevel),
-          backgroundColor: sortedData.map((d) => {
-            const gap = d.targetLevel - d.currentLevel;
-            if (gap > 3) return 'rgba(255, 99, 132, 0.8)';
-            if (gap > 2) return 'rgba(255, 159, 64, 0.8)';
-            if (gap > 1) return 'rgba(255, 205, 86, 0.8)';
-            return 'rgba(75, 192, 192, 0.8)';
-          }),
-          borderWidth: 1
-        }
-      ]
+  // Create table data
+  const tableData = sortedData.map(d => {
+    const gap = d.targetLevel - d.currentLevel;
+    let priority = '';
+    let color = '';
+    
+    if (gap > 3) {
+      priority = 'Critical';
+      color = 'Red';
+    } else if (gap > 2) {
+      priority = 'High';
+      color = 'Orange';
+    } else if (gap > 1) {
+      priority = 'Medium';
+      color = 'Yellow';
+    } else {
+      priority = 'Low';
+      color = 'Green';
+    }
+    
+    return [
+      d.domain,
+      d.domainName,
+      gap.toFixed(2),
+      priority,
+      color
+    ];
+  });
+
+  autoTable(pdf, {
+    startY: y,
+    head: [["Domain", "Domain Name", "Gap", "Priority", "Action"]],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [80, 80, 80] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 30, halign: 'center' },
+      4: { cellWidth: 25, halign: 'center' }
     },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      scales: {
-        x: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: 'Maturity Gap (Target - Current)'
-          }
-        }
-      },
-      plugins: {
-        title: {
-          display: true,
-          text: 'Priority Areas (Based on Maturity Gap)'
-        },
-        legend: {
-          display: false
+    didParseCell: function(data) {
+      // Color the priority cell based on value
+      if (data.section === 'body' && data.column.index === 3) {
+        const priority = data.cell.raw?.toString();
+        if (priority === 'Critical') {
+          data.cell.styles.fillColor = [255, 99, 132];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'High') {
+          data.cell.styles.fillColor = [255, 159, 64];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'Medium') {
+          data.cell.styles.fillColor = [255, 205, 86];
+        } else {
+          data.cell.styles.fillColor = [75, 192, 192];
         }
       }
     }
   });
 
-  // Get the chart as an image and add to PDF
-  const dataUrl = chart.toBase64Image();
-  pdf.addImage(dataUrl, 'PNG', x, y, 170, 100);
-
   // Add legend
+  const finalY = (pdf as any).lastAutoTable?.finalY || (y + 120);
+  
+  // Add colored rectangles
   pdf.setFillColor(255, 99, 132);
-  pdf.rect(20, 140, 10, 5, 'F');
+  pdf.rect(20, finalY + 20, 10, 5, 'F');
   pdf.setTextColor(40, 40, 40);
   pdf.setFontSize(10);
-  pdf.text('Critical Gap (>3)', 35, 144);
+  pdf.text('Critical Gap (>3): Immediate action required', 35, finalY + 24);
 
   pdf.setFillColor(255, 159, 64);
-  pdf.rect(20, 150, 10, 5, 'F');
-  pdf.text('High Gap (2-3)', 35, 154);
+  pdf.rect(20, finalY + 30, 10, 5, 'F');
+  pdf.text('High Gap (2-3): High priority improvement needed', 35, finalY + 34);
 
   pdf.setFillColor(255, 205, 86);
-  pdf.rect(20, 160, 10, 5, 'F');
-  pdf.text('Medium Gap (1-2)', 35, 164);
+  pdf.rect(20, finalY + 40, 10, 5, 'F');
+  pdf.text('Medium Gap (1-2): Moderate improvement needed', 35, finalY + 44);
 
   pdf.setFillColor(75, 192, 192);
-  pdf.rect(20, 170, 10, 5, 'F');
-  pdf.text('Low Gap (<1)', 35, 174);
+  pdf.rect(20, finalY + 50, 10, 5, 'F');
+  pdf.text('Low Gap (<1): Fine-tuning and optimization', 35, finalY + 54);
 
   // Add explanation text
   pdf.setFontSize(11);
   pdf.setTextColor(60, 60, 60);
-  pdf.text("Priority Explanation:", 20, 190);
+  pdf.text("Priority Explanation:", 20, finalY + 70);
   pdf.setFontSize(10);
-  const priorityExplanation = "This heat map identifies priority areas for improvement based on the gap between current and target maturity levels. Areas with larger gaps should be prioritized for remediation efforts. Critical and High gap areas require immediate attention and resource allocation.";
+  const priorityExplanation = "This table identifies priority areas for improvement based on the gap between current and target maturity levels. Areas with larger gaps should be prioritized for remediation efforts. Critical and High gap areas require immediate attention and resource allocation.";
   const explanationLines = pdf.splitTextToSize(priorityExplanation, 170);
-  pdf.text(explanationLines, 20, 200);
-
-  // Clean up
-  chart.destroy();
+  pdf.text(explanationLines, 20, finalY + 80);
 };
