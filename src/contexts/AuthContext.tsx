@@ -81,6 +81,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     name: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
+      // Create a customized email template by calling our edge function first
+      await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/custom-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "confirmation",
+          email: email,
+          name: name,
+          redirectTo: `${window.location.origin}/email-confirmation`,
+        }),
+      });
+
+      // Then perform the signup
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -89,14 +104,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             name: name,
           },
           emailRedirectTo: `${window.location.origin}/email-confirmation`,
-          emailOptions: {
-            subject: "Konfirmasi Akun COBAIN - Verifikasi Email Anda",
-            data: {
-              company_name: "COBAIN",
-              company_address: "Jakarta, Indonesia",
-              user_name: name,
-            }
-          }
         },
       });
 
