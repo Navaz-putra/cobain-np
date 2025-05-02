@@ -14,6 +14,7 @@ import { Chatbot } from "@/components/Chatbot";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import SignUp from "@/pages/SignUp";
+import EmailConfirmation from "@/pages/EmailConfirmation";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AuditorDashboard from "@/pages/AuditorDashboard";
 import StartAudit from "@/pages/StartAudit";
@@ -39,6 +40,7 @@ const App = () => (
                     <Route path="/landing" element={<Landing />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<SignUp />} />
+                    <Route path="/email-confirmation" element={<EmailConfirmation />} />
                     <Route path="/admin-dashboard" element={<AdminDashboard />} />
                     <Route path="/auditor-dashboard" element={<AuditorDashboard />} />
                     <Route path="/start-audit" element={<StartAudit />} />

@@ -88,6 +88,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           data: {
             name: name,
           },
+          emailRedirectTo: `${window.location.origin}/email-confirmation`,
+          emailOptions: {
+            subject: "Konfirmasi Akun COBAIN - Verifikasi Email Anda",
+            data: {
+              company_name: "COBAIN",
+              company_address: "Jakarta, Indonesia",
+              user_name: name,
+            }
+          }
         },
       });
 

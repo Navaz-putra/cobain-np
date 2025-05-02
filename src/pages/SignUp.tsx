@@ -30,16 +30,19 @@ export default function SignUp() {
       if (success) {
         toast({
           title: "Pendaftaran berhasil",
-          description: "Silakan periksa email Anda untuk konfirmasi akun",
+          description: "Kami telah mengirimkan email konfirmasi ke alamat email Anda. Silakan periksa kotak masuk atau folder spam Anda untuk verifikasi.",
         });
-        // Redirect to login page after successful registration
-        navigate("/login");
+        // Show success state instead of redirecting
+        setLoading(false);
+        // Create a success state in the component
+        setRegisterSuccess(true);
       } else {
         toast({
           title: "Pendaftaran gagal",
           description: error || "Terjadi kesalahan saat pendaftaran",
           variant: "destructive",
         });
+        setLoading(false);
       }
     } catch (error) {
       toast({
@@ -47,10 +50,11 @@ export default function SignUp() {
         description: "Terjadi kesalahan yang tidak terduga",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
+
+  const [registerSuccess, setRegisterSuccess] = useState(false);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -65,74 +69,116 @@ export default function SignUp() {
             alt="COBAIN Logo" 
             className="mx-auto h-16 w-16 mb-2" 
           />
-          <CardTitle className="text-2xl font-bold">Daftar Akun</CardTitle>
-          <CardDescription>
-            Buat akun untuk mulai menggunakan platform COBAIN
-          </CardDescription>
+          {registerSuccess ? (
+            <>
+              <CardTitle className="text-2xl font-bold">Pendaftaran Berhasil</CardTitle>
+              <CardDescription>
+                Silakan periksa email Anda untuk mengonfirmasi pendaftaran
+              </CardDescription>
+            </>
+          ) : (
+            <>
+              <CardTitle className="text-2xl font-bold">Daftar Akun</CardTitle>
+              <CardDescription>
+                Buat akun untuk mulai menggunakan platform COBAIN
+              </CardDescription>
+            </>
+          )}
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nama Lengkap</Label>
-              <Input
-                id="name"
-                placeholder="Nama Lengkap"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+        
+        {registerSuccess ? (
+          <CardContent className="space-y-4 pt-4">
+            <div className="rounded-lg bg-green-50 dark:bg-green-900/20 p-6 text-center">
+              <h3 className="text-lg font-medium text-green-800 dark:text-green-300 mb-2">
+                Email Konfirmasi Telah Dikirim
+              </h3>
+              <p className="text-green-700 dark:text-green-400 mb-4">
+                Kami telah mengirimkan email konfirmasi ke <span className="font-medium">{email}</span>.
+                Silakan periksa kotak masuk atau folder spam Anda untuk melengkapi proses pendaftaran.
+              </p>
+              <p className="text-sm text-green-600 dark:text-green-500">
+                Jika Anda tidak menerima email dalam beberapa menit, silakan periksa folder spam atau coba daftar kembali.
+              </p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+            <div className="text-center pt-4">
+              <Link to="/login">
+                <Button variant="outline" className="mr-2">
+                  Kembali ke halaman login
+                </Button>
+              </Link>
+              <Button onClick={() => setRegisterSuccess(false)}>
+                Daftar dengan email lain
+              </Button>
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Kata Sandi</Label>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                  onClick={togglePasswordVisibility}
-                  tabIndex={-1}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <Button className="w-full" type="submit" disabled={loading}>
-              {loading ? "Mendaftar..." : "Daftar"}
-            </Button>
           </CardContent>
-        </form>
-        <CardFooter>
-          <div className="text-center w-full text-sm">
-            Sudah memiliki akun?{" "}
-            <Link to="/login" className="text-blue-600 hover:underline">
-              Masuk
-            </Link>
-          </div>
-        </CardFooter>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nama Lengkap</Label>
+                <Input
+                  id="name"
+                  placeholder="Nama Lengkap"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Kata Sandi</Label>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    onClick={togglePasswordVisibility}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <Button className="w-full" type="submit" disabled={loading}>
+                {loading ? "Mendaftar..." : "Daftar"}
+              </Button>
+            </CardContent>
+          </form>
+        )}
+        
+        {!registerSuccess && (
+          <CardFooter>
+            <div className="text-center w-full text-sm">
+              Sudah memiliki akun?{" "}
+              <Link to="/login" className="text-blue-600 hover:underline">
+                Masuk
+              </Link>
+            </div>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
