@@ -34,6 +34,9 @@ export function Navbar() {
             <Link to="/">{getLogo()}</Link>
           </div>
 
+          {/* Push everything to the right */}
+          <div className="flex-1"></div>
+
           {/* Desktop menu */}
           <div className="hidden md:block">
             <div className="flex items-center space-x-4">
@@ -61,17 +64,17 @@ export function Navbar() {
               ) : (
                 <>
                   <Link to="/login">
-                    <Button>Masuk</Button>
+                    <Button className="bg-cobain-blue hover:bg-cobain-navy">Masuk</Button>
                   </Link>
                   <Link to="/signup">
-                    <Button variant="outline">Daftar</Button>
+                    <Button variant="outline" className="border-cobain-blue text-cobain-blue hover:bg-cobain-blue/10">Daftar</Button>
                   </Link>
                 </>
               )}
             </div>
           </div>
 
-          <div className="hidden md:flex items-center space-x-2">
+          <div className="hidden md:flex items-center ml-4 space-x-2">
             <ThemeToggle />
             <LanguageToggle />
           </div>
@@ -126,10 +129,10 @@ export function Navbar() {
                   ) : (
                     <>
                       <Link to="/login" onClick={() => setIsOpen(false)}>
-                        <Button className="w-full">Masuk</Button>
+                        <Button className="w-full bg-cobain-blue hover:bg-cobain-navy">Masuk</Button>
                       </Link>
                       <Link to="/signup" onClick={() => setIsOpen(false)}>
-                        <Button variant="outline" className="w-full">Daftar</Button>
+                        <Button variant="outline" className="w-full border-cobain-blue text-cobain-blue hover:bg-cobain-blue/10">Daftar</Button>
                       </Link>
                     </>
                   )}

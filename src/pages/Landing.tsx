@@ -1,3 +1,4 @@
+
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -28,16 +29,18 @@ export default function Landing() {
               <div className="flex flex-wrap gap-4">
                 {isAuthenticated ? <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
                     <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100">
-                      {t("landing.getStarted")}
+                      Mulai
                     </Button>
                   </Link> : <Link to="/login">
                     <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100">
-                      {t("landing.getStarted")}
+                      Mulai
                     </Button>
                   </Link>}
-                <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-zinc-50">
-                  {t("landing.learnMore")}
-                </Button>
+                <Link to="/signup">
+                  <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-zinc-50">
+                    Daftar
+                  </Button>
+                </Link>
               </div>
             </div>
             <div className="md:w-1/2 flex justify-center">
@@ -51,10 +54,9 @@ export default function Landing() {
       <section className="py-16 px-6 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">COBIT 2019 Audit Framework</h2>
+            <h2 className="text-3xl font-bold mb-4">{t("landing.cobit.title")}</h2>
             <p className="text-lg text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              Comprehensive Online-Based Audit Instrument (COBAIN) is an integrated platform designed to simplify 
-              and streamline the implementation of COBIT 2019 framework for IT governance and management.
+              {t("landing.cobit.desc")}
             </p>
           </div>
           
@@ -63,9 +65,9 @@ export default function Landing() {
               <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
                 <CheckCircle className="h-6 w-6 text-cobain-blue" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Streamlined Assessment</h3>
+              <h3 className="text-xl font-semibold mb-2">{t("landing.streamlined")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Simplifies the complex COBIT 2019 assessment process with structured questionnaires and guided workflows.
+                {t("landing.streamlined.desc")}
               </p>
             </div>
             
@@ -73,9 +75,9 @@ export default function Landing() {
               <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
                 <BarChart3 className="h-6 w-6 text-cobain-blue" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Detailed Analysis</h3>
+              <h3 className="text-xl font-semibold mb-2">{t("landing.analysis")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Provides comprehensive gap analysis and visualization between current and target maturity levels.
+                {t("landing.analysis.desc")}
               </p>
             </div>
             
@@ -83,9 +85,9 @@ export default function Landing() {
               <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
                 <Award className="h-6 w-6 text-cobain-blue" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Expert Recommendations</h3>
+              <h3 className="text-xl font-semibold mb-2">{t("landing.recommendations")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Generates actionable recommendations based on assessment results to improve IT governance.
+                {t("landing.recommendations.desc")}
               </p>
             </div>
           </div>
@@ -106,7 +108,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.userManagement")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Manage users, roles, and permissions with a comprehensive access control system.
+                Kelola pengguna, peran, dan izin dengan sistem kontrol akses komprehensif.
               </p>
             </div>
 
@@ -117,7 +119,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.assessment")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Conduct COBIT 2019 assessments with a structured and guided approach.
+                Lakukan penilaian COBIT 2019 dengan pendekatan terstruktur dan terpandu.
               </p>
             </div>
 
@@ -128,7 +130,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.maturity")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Calculate maturity levels across COBIT domains and processes.
+                Hitung tingkat kematangan di seluruh domain dan proses COBIT.
               </p>
             </div>
 
@@ -139,7 +141,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.gap")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Visualize gaps between current and target maturity levels.
+                Visualisasikan kesenjangan antara tingkat kematangan saat ini dan target.
               </p>
             </div>
 
@@ -150,7 +152,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.recommendation")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Get intelligent recommendations for improvement based on assessment results.
+                Dapatkan rekomendasi cerdas untuk perbaikan berdasarkan hasil penilaian.
               </p>
             </div>
 
@@ -161,7 +163,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.reporting")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Generate comprehensive reports in multiple formats.
+                Hasilkan laporan komprehensif dalam berbagai format.
               </p>
             </div>
 
@@ -172,7 +174,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.document")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Store and manage supporting documents and evidence.
+                Simpan dan kelola dokumen pendukung dan bukti.
               </p>
             </div>
 
@@ -183,7 +185,7 @@ export default function Landing() {
               </div>
               <h3 className="text-xl font-semibold mb-2">{t("landing.features.audit")}</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Maintain a comprehensive audit trail of all activities.
+                Pertahankan jejak audit komprehensif dari semua aktivitas.
               </p>
             </div>
           </div>
@@ -193,7 +195,7 @@ export default function Landing() {
       {/* Benefits Section */}
       <section className="py-16 px-6 bg-white dark:bg-gray-950">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Benefits of Using COBAIN</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">{t("landing.benefits.title")}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <div className="flex flex-col">
@@ -202,9 +204,9 @@ export default function Landing() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-1">Standardized Assessment Process</h3>
+                  <h3 className="text-xl font-semibold mb-1">{t("landing.benefits.standardized")}</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Ensures consistent application of COBIT 2019 framework across your organization.
+                    {t("landing.benefits.standardized.desc")}
                   </p>
                 </div>
               </div>
@@ -214,9 +216,9 @@ export default function Landing() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-1">Time and Resource Efficiency</h3>
+                  <h3 className="text-xl font-semibold mb-1">{t("landing.benefits.efficient")}</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Reduces the time and effort required to conduct comprehensive IT governance assessments.
+                    {t("landing.benefits.efficient.desc")}
                   </p>
                 </div>
               </div>
@@ -226,9 +228,9 @@ export default function Landing() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-1">Evidence-Based Approach</h3>
+                  <h3 className="text-xl font-semibold mb-1">{t("landing.benefits.evidence")}</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Supports documentation management for audit evidence and compliance purposes.
+                    {t("landing.benefits.evidence.desc")}
                   </p>
                 </div>
               </div>
@@ -240,9 +242,9 @@ export default function Landing() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-1">Data-Driven Decision Making</h3>
+                  <h3 className="text-xl font-semibold mb-1">{t("landing.benefits.datadriven")}</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Provides actionable insights through comprehensive visualization and reporting.
+                    {t("landing.benefits.datadriven.desc")}
                   </p>
                 </div>
               </div>
@@ -252,9 +254,9 @@ export default function Landing() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-1">Continuous Improvement</h3>
+                  <h3 className="text-xl font-semibold mb-1">{t("landing.benefits.continuous")}</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Enables tracking of improvement initiatives and progress against target maturity levels.
+                    {t("landing.benefits.continuous.desc")}
                   </p>
                 </div>
               </div>
@@ -264,9 +266,9 @@ export default function Landing() {
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold mb-1">Regulatory Compliance</h3>
+                  <h3 className="text-xl font-semibold mb-1">{t("landing.benefits.regulatory")}</h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Helps organizations meet regulatory requirements through structured governance frameworks.
+                    {t("landing.benefits.regulatory.desc")}
                   </p>
                 </div>
               </div>
@@ -278,13 +280,13 @@ export default function Landing() {
       {/* CTA Section */}
       <section className="py-16 px-6 bg-cobain-blue/10 dark:bg-gray-800">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to start your audit journey?</h2>
+          <h2 className="text-3xl font-bold mb-6">{t("landing.cta.title")}</h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-            Join organizations worldwide that use COBAIN to implement and assess COBIT 2019 framework.
+            {t("landing.cta.subtitle")}
           </p>
           <Link to="/login">
             <Button size="lg" className="bg-cobain-blue hover:bg-cobain-navy">
-              Get Started Now
+              {t("landing.cta.button")}
             </Button>
           </Link>
         </div>
