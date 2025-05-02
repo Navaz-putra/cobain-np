@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -938,3 +939,58 @@ export default function AdminDashboard() {
                         Domain
                       </Label>
                       <Select
+                        value={editQuestion.domain_id}
+                        onValueChange={(value) => {
+                          setEditQuestion({ 
+                            ...editQuestion, 
+                            domain_id: value,
+                            subdomain_id: "" // Reset subdomain when domain changes
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Pilih domain" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {domainStructure.map(domain => (
+                            <SelectItem key={domain.id} value={domain.id}>
+                              {domain.id} - {domain.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="edit-subdomain" className="text-right">
+                        Subdomain
+                      </Label>
+                      <Select
+                        value={editQuestion.subdomain_id}
+                        onValueChange={(value) => setEditQuestion({ ...editQuestion, subdomain_id: value })}
+                        disabled={!editQuestion.domain_id}
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue placeholder="Pilih subdomain" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {editQuestion.domain_id && getAvailableSubdomains(editQuestion.domain_id).map(subdomain => (
+                            <SelectItem key={subdomain.id} value={subdomain.id}>
+                              {subdomain.id} - {subdomain.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleEditQuestion}>Perbarui Pertanyaan</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
