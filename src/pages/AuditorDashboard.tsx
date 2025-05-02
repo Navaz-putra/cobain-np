@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -14,10 +15,14 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, FileText 
+  ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, FileText,
+  Info, Settings, Layout, Award
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PDFReport } from "@/components/PDFReport";
+import { GettingStartedGuide } from "@/components/GettingStartedGuide";
+import { MaturityLevelInfo } from "@/components/MaturityLevelInfo";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Mock audit data
 const mockAudits = [
@@ -166,218 +171,296 @@ export default function AuditorDashboard() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">{t("auditor.title")}</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {/* Welcome Card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Selamat Datang, {user?.name}!</CardTitle>
-            <CardDescription>{t("auditor.welcome")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Sebagai auditor, Anda dapat melakukan penilaian COBIT 2019, melacak kemajuan Anda, 
-                dan menghasilkan laporan. Gunakan dasbor untuk mengelola aktivitas audit Anda.
+    <div className="p-6 bg-gray-50 dark:bg-gray-950 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        {/* Header with welcome banner */}
+        <div className="mb-8 bg-gradient-to-r from-cobain-blue to-cobain-burgundy rounded-xl overflow-hidden shadow-lg">
+          <div className="px-6 py-8 md:py-12 md:px-10 flex flex-col md:flex-row items-center justify-between">
+            <div className="text-white mb-4 md:mb-0">
+              <h1 className="text-3xl md:text-4xl font-bold">{t("auditor.title")}</h1>
+              <p className="mt-2 opacity-90">
+                Selamat datang di platform audit COBIT 2019. Mulai audit tata kelola TI atau lanjutkan pekerjaan Anda.
               </p>
-              <div className="flex justify-center">
-                <img 
-                  src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" 
-                  alt="COBAIN Logo" 
-                  className="h-16 w-16" 
-                />
+              <div className="flex items-center gap-3 mt-4">
+                <Link to="/start-audit">
+                  <Button className="bg-white/20 hover:bg-white/30 backdrop-blur-sm">
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Mulai Audit Baru
+                  </Button>
+                </Link>
+                {audits.length > 0 && (
+                  <Link to={`/audit-checklist/${audits[0]?.id}`}>
+                    <Button variant="outline" className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border-white/30">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Kelola Audit
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Aksi Cepat</CardTitle>
-            <CardDescription>Tugas auditor umum</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Link to="/start-audit">
-              <Button className="w-full justify-start" variant="outline">
-                <ClipboardCheck className="mr-2 h-4 w-4" />
-                {t("auditor.startAudit")}
-              </Button>
-            </Link>
-
-            {audits.length > 0 && (
-              <Link to={`/audit-checklist/${audits[0]?.id}`}>
-                <Button className="w-full justify-start" variant="outline">
-                  <FileCheck className="mr-2 h-4 w-4" />
-                  {t("auditor.continueAudit")}
-                </Button>
-              </Link>
-            )}
-
-            {audits.length > 0 && (
-              <PDFReport
-                auditId={audits[0]?.id}
-                className="w-full justify-start" 
-                variant="outline"
-                label={t("auditor.viewResults")}
+            <div className="flex items-center justify-center">
+              <img 
+                src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" 
+                alt="COBAIN Logo" 
+                className="h-24 w-24 md:h-32 md:w-32 object-contain" 
               />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Statistics */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Statistics</CardTitle>
-            <CardDescription>Your audit activities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Total Audits</span>
-                  <span className="font-medium">{mockAudits.length}</span>
-                </div>
-                <Progress value={100} />
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Completed</span>
-                  <span className="font-medium">
-                    {mockAudits.filter((a) => a.status === "completed").length} / {mockAudits.length}
-                  </span>
-                </div>
-                <Progress 
-                  value={
-                    (mockAudits.filter((a) => a.status === "completed").length / 
-                    mockAudits.length) * 100
-                  }
-                />
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>In Progress</span>
-                  <span className="font-medium">
-                    {mockAudits.filter((a) => a.status === "in-progress").length} / {mockAudits.length}
-                  </span>
-                </div>
-                <Progress 
-                  value={
-                    (mockAudits.filter((a) => a.status === "in-progress").length / 
-                    mockAudits.length) * 100
-                  }
-                  className="bg-amber-200 dark:bg-amber-900"
-                />
-              </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* My Audits */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Audit Saya</CardTitle>
-              <CardDescription>Daftar penilaian COBIT 2019 Anda</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">
-                  <p>Memuat data audit...</p>
-                </div>
-              ) : audits.length > 0 ? (
-                <div className="space-y-4">
-                  {audits.map((audit) => (
-                    <div
-                      key={audit.id}
-                      className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 p-4 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <h4 className="font-medium">{audit.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Tanggal: {audit.audit_date}
-                        </p>
-                        <div className="mt-2 flex items-center space-x-2">
-                          <div className="text-sm">
-                            Organisasi: {audit.organization}
+        {/* Info and Quick Links */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            <GettingStartedGuide />
+          </div>
+          <div>
+            <MaturityLevelInfo />
+          </div>
+        </div>
+
+        {/* Dashboard Content */}
+        <Tabs defaultValue="current-audits" className="mb-6">
+          <TabsList className="bg-background/80 backdrop-blur-sm">
+            <TabsTrigger value="current-audits" className="flex items-center">
+              <Layout className="mr-2 h-4 w-4" />
+              Audit Saya
+            </TabsTrigger>
+            <TabsTrigger value="stats" className="flex items-center">
+              <BarChart className="mr-2 h-4 w-4" />
+              Statistik
+            </TabsTrigger>
+            <TabsTrigger value="activities" className="flex items-center">
+              <Clock className="mr-2 h-4 w-4" />
+              Aktivitas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="current-audits" className="pt-4">
+            <Card className="shadow-md border-gray-200 dark:border-gray-800">
+              <CardHeader className="bg-card border-b">
+                <CardTitle className="flex items-center">
+                  <Award className="mr-2 h-5 w-5 text-cobain-blue" />
+                  Audit Saya
+                </CardTitle>
+                <CardDescription>Daftar penilaian COBIT 2019 Anda</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="mt-2">Memuat data audit...</p>
+                  </div>
+                ) : audits.length > 0 ? (
+                  <div className="grid gap-5">
+                    {audits.map((audit) => (
+                      <div
+                        key={audit.id}
+                        className="flex flex-col sm:flex-row bg-card hover:bg-muted/20 transition-colors space-y-3 sm:space-y-0 sm:space-x-4 p-5 border rounded-lg shadow-sm"
+                      >
+                        <div className="flex-1">
+                          <h4 className="font-medium text-lg">{audit.title}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Tanggal Audit: {audit.audit_date}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <div className="text-sm flex items-center">
+                              <Info className="h-3.5 w-3.5 mr-1" />
+                              Organisasi: <span className="font-medium ml-1">{audit.organization}</span>
+                            </div>
+                            <div className="ml-4 text-sm">
+                              {getStatusBadge(audit.status)}
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="flex justify-between text-sm mb-1">
+                              <span>Progress</span>
+                              <span>{audit.progress || 0}%</span>
+                            </div>
+                            <Progress value={audit.progress || 0} className="h-2" />
+                          </div>
+                        </div>
+
+                        <div className="sm:text-right flex flex-col justify-between items-start sm:items-end">
+                          <div className="flex gap-2 mt-3 sm:mt-0">
+                            <PDFReport
+                              auditId={audit.id}
+                              variant="default" 
+                              size="sm"
+                              label="Lihat Laporan"
+                              className="bg-cobain-burgundy hover:bg-cobain-burgundy/90"
+                            />
+                            <Link to={`/audit-checklist/${audit.id}`}>
+                              <Button variant="outline" size="sm" className="flex items-center">
+                                <span>Lanjutkan</span>
+                                <ChevronRight className="ml-1 h-4 w-4" />
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-muted/20 rounded-lg border border-dashed">
+                    <div className="flex justify-center mb-4">
+                      <ClipboardCheck className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Belum Ada Audit</h3>
+                    <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                      Anda belum membuat audit apapun. Mulai audit pertama Anda untuk menilai tingkat kematangan tata kelola TI.
+                    </p>
+                    <Link to="/start-audit">
+                      <Button size="lg" className="bg-cobain-blue hover:bg-cobain-blue/90">
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        Mulai Audit Pertama Anda
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex justify-center border-t pt-4 pb-2">
+                <Link to="/start-audit">
+                  <Button variant="outline">
+                    <ClipboardCheck className="mr-2 h-4 w-4" />
+                    Buat Audit Baru
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          </TabsContent>
 
-                      <div className="sm:text-right flex flex-col justify-between items-start sm:items-end">
-                        <div className="mb-2">{getStatusBadge(audit.status)}</div>
-                        <div className="flex gap-2">
-                          <PDFReport
-                            auditId={audit.id}
-                            variant="outline" 
-                            size="sm"
-                            label="Laporan"
-                          />
-                          <Link to={`/audit-checklist/${audit.id}`}>
-                            <Button variant="outline" size="sm">
-                              <span>Lihat</span>
-                              <ChevronRight className="ml-2 h-4 w-4" />
-                            </Button>
-                          </Link>
+          <TabsContent value="stats" className="pt-4">
+            <Card className="shadow-md border-gray-200 dark:border-gray-800">
+              <CardHeader>
+                <CardTitle>Statistik Audit</CardTitle>
+                <CardDescription>Ringkasan aktivitas audit Anda</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-card rounded-lg p-4 border shadow-sm">
+                    <div className="text-muted-foreground text-sm">Total Audit</div>
+                    <div className="text-2xl font-bold mt-1">{audits.length || mockAudits.length}</div>
+                  </div>
+                  
+                  <div className="bg-card rounded-lg p-4 border shadow-sm">
+                    <div className="text-muted-foreground text-sm">Audit Selesai</div>
+                    <div className="text-2xl font-bold mt-1 text-green-600 dark:text-green-500">
+                      {audits.filter(a => a.status === "completed").length || mockAudits.filter(a => a.status === "completed").length}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-card rounded-lg p-4 border shadow-sm">
+                    <div className="text-muted-foreground text-sm">Sedang Berjalan</div>
+                    <div className="text-2xl font-bold mt-1 text-amber-600 dark:text-amber-500">
+                      {audits.filter(a => a.status === "in-progress").length || mockAudits.filter(a => a.status === "in-progress").length}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Total Audits</span>
+                      <span className="font-medium">{mockAudits.length}</span>
+                    </div>
+                    <Progress value={100} className="h-2"/>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Completed</span>
+                      <span className="font-medium">
+                        {mockAudits.filter((a) => a.status === "completed").length} / {mockAudits.length}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={
+                        (mockAudits.filter((a) => a.status === "completed").length / 
+                        mockAudits.length) * 100
+                      }
+                      className="h-2 bg-muted"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>In Progress</span>
+                      <span className="font-medium">
+                        {mockAudits.filter((a) => a.status === "in-progress").length} / {mockAudits.length}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={
+                        (mockAudits.filter((a) => a.status === "in-progress").length / 
+                        mockAudits.length) * 100
+                      }
+                      className="h-2 bg-amber-200 dark:bg-amber-900"
+                    />
+                  </div>
+                </div>
+
+                {/* Domain coverage chart placeholder */}
+                <div className="mt-8 border rounded-lg p-6 bg-muted/10">
+                  <h3 className="text-sm font-medium mb-4">Domain Coverage</h3>
+                  <div className="grid grid-cols-5 gap-2 text-center">
+                    {['EDM', 'APO', 'BAI', 'DSS', 'MEA'].map((domain) => {
+                      const auditCount = mockAudits.filter(a => a.domains?.includes(domain)).length;
+                      const percentage = (auditCount / mockAudits.length) * 100;
+                      
+                      return (
+                        <div key={domain} className="flex flex-col items-center">
+                          <div className="text-sm font-medium mb-1">{domain}</div>
+                          <div className="w-full bg-muted rounded-full h-16 flex items-end overflow-hidden">
+                            <div 
+                              className="bg-cobain-blue dark:bg-cobain-blue/80 w-full" 
+                              style={{ height: `${percentage}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs mt-1">{Math.round(percentage)}%</div>
                         </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="activities" className="pt-4">
+            <Card className="shadow-md border-gray-200 dark:border-gray-800">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Clock className="mr-2 h-5 w-5" />
+                  Aktivitas Terbaru
+                </CardTitle>
+                <CardDescription>Tindakan terbaru Anda pada platform</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {mockActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start space-x-4 py-3 px-2 border-b last:border-0 hover:bg-muted/10 rounded-md transition-colors"
+                    >
+                      <div className="bg-primary/10 rounded-full p-2.5">
+                        <activity.icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{activity.action}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {activity.date}
+                        </p>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="flex justify-center mb-4">
-                    <ClipboardCheck className="h-12 w-12 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">Belum Ada Audit</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Anda belum membuat audit apapun.
-                  </p>
-                  <Link to="/start-audit">
-                    <Button>Mulai Audit Pertama Anda</Button>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Aktivitas Terbaru</CardTitle>
-            <CardDescription>Tindakan terbaru Anda</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {mockActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start space-x-4 py-2 border-b last:border-0"
-                >
-                  <div className="bg-muted rounded-full p-2">
-                    <activity.icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {activity.date}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="ghost" className="w-full">
-              Lihat Semua Aktivitas
-            </Button>
-          </CardFooter>
-        </Card>
+              </CardContent>
+              <CardFooter className="flex justify-center border-t">
+                <Button variant="ghost" className="text-sm">
+                  Lihat Semua Aktivitas
+                </Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
