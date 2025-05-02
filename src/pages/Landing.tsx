@@ -1,19 +1,17 @@
-
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Users, LayoutDashboard, ChartBar, PieChart, BookOpen, 
-  FileText, FolderOpen, ShieldCheck, CheckCircle, BarChart3, Award
-} from "lucide-react";
-
+import { Users, LayoutDashboard, ChartBar, PieChart, BookOpen, FileText, FolderOpen, ShieldCheck, CheckCircle, BarChart3, Award } from "lucide-react";
 export default function Landing() {
-  const { t } = useLanguage();
-  const { isAuthenticated, user } = useAuth();
-
-  return (
-    <div className="flex flex-col min-h-screen">
+  const {
+    t
+  } = useLanguage();
+  const {
+    isAuthenticated,
+    user
+  } = useAuth();
+  return <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
       <section className="gradient-bg text-white py-20 px-6">
         <div className="max-w-7xl mx-auto">
@@ -27,30 +25,22 @@ export default function Landing() {
                 {t("landing.description")}
               </p>
               <div className="flex flex-wrap gap-4">
-                {isAuthenticated ? (
-                  <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
+                {isAuthenticated ? <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
                     <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100">
                       {t("landing.getStarted")}
                     </Button>
-                  </Link>
-                ) : (
-                  <Link to="/login">
+                  </Link> : <Link to="/login">
                     <Button size="lg" className="bg-white text-cobain-blue hover:bg-gray-100">
                       {t("landing.getStarted")}
                     </Button>
-                  </Link>
-                )}
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                  </Link>}
+                <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-zinc-50">
                   {t("landing.learnMore")}
                 </Button>
               </div>
             </div>
             <div className="md:w-1/2 flex justify-center">
-              <img 
-                src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" 
-                alt="COBAIN Logo" 
-                className="w-64 h-64 object-contain"
-              />
+              <img src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" alt="COBAIN Logo" className="w-64 h-64 object-contain" />
             </div>
           </div>
         </div>
@@ -305,11 +295,7 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="md:w-1/2 mb-8 md:mb-0 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start mb-4">
-                <img 
-                  src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" 
-                  alt="COBAIN Logo" 
-                  className="h-16 w-16 mr-4" 
-                />
+                <img src="/lovable-uploads/81c0d83a-211c-4ccb-95b8-199c8fe9a8b4.png" alt="COBAIN Logo" className="h-16 w-16 mr-4" />
                 <h3 className="text-2xl font-bold">COBAIN</h3>
               </div>
               <p className="text-gray-600 dark:text-gray-400 max-w-md">
@@ -344,6 +330,5 @@ export default function Landing() {
           </div>
         </div>
       </section>
-    </div>
-  );
+    </div>;
 }
