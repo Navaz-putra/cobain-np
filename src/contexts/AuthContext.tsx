@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,16 +68,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           role: "admin",
         }));
         
-        // Although we're not using Supabase auth in this specific case,
-        // we need to set the user and session state to maintain consistency
+        // Create a user object that matches the expected User type structure
         const superAdminUser = {
           id: "superadmin-id",
           email: "navazputra@students.amikom.ac.id",
+          app_metadata: {},
           user_metadata: { name: "Super Admin" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
           name: "Super Admin"
-        };
+        } as unknown as User & { name?: string };
         
-        setUser(superAdminUser as User & { name?: string });
+        setUser(superAdminUser);
         return true;
       }
       
