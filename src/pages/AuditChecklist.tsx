@@ -550,15 +550,15 @@ export default function AuditChecklist() {
                           Tingkat Kematangan <span className="text-red-500">*</span>
                         </label>
                         
-                        <div className="mb-4 flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-4">
                           {maturityLevels.map((level) => (
                             <Badge 
                               key={level.value}
                               variant="outline"
                               className={`${question.answer?.maturity_level === level.value ? 
-                                getMaturityBadgeColor(level.value) : ""} px-3 py-1 text-xs border`}
+                                getMaturityBadgeColor(level.value) : ""} whitespace-nowrap py-1 px-2 text-xs`}
                             >
-                              Level {level.label}: {level.description.split(':')[0]}
+                              Level {level.label} - {level.description.split(':')[0]}
                             </Badge>
                           ))}
                         </div>
@@ -567,7 +567,7 @@ export default function AuditChecklist() {
                           type="single" 
                           value={String(question.answer?.maturity_level ?? "")}
                           onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
-                          className="flex justify-start flex-wrap gap-2"
+                          className="flex justify-start gap-1 mb-4"
                         >
                           {maturityLevels.map((level) => (
                             <ToggleGroupItem 
@@ -590,14 +590,15 @@ export default function AuditChecklist() {
                         )}
                         
                         {question.answer?.maturity_level !== undefined && (
-                          <p className="text-sm mt-3 p-2 bg-gray-50 rounded border border-gray-100">
+                          <p className="text-sm mt-1 p-3 bg-gray-50 rounded border border-gray-100">
+                            <span className="font-medium">Level {question.answer.maturity_level}:</span> {" "}
                             {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
                           </p>
                         )}
                       </div>
                     </div>
                     
-                    <div className="mt-4">
+                    <div className="mt-2">
                       <label className="text-sm font-medium mb-2 block">
                         Catatan (Opsional)
                       </label>
