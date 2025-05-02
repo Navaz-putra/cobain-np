@@ -1,3 +1,4 @@
+
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -22,7 +23,7 @@ export default function Landing() {
               </h1>
               <p className="font-medium mb-6 text-2xl text-center">Sistem Audit Mandiri</p>
               <p className="mb-8 opacity-90 text-center text-lg px-[60px]">
-                {t("landing.description")}
+                Kendalikan Audit TI Anda dengan Instrumen Mandiri Berbasis COBIT 2019
               </p>
               <div className="flex justify-center w-full">
                 {isAuthenticated ? <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
