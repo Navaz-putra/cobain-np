@@ -511,25 +511,6 @@ export default function AuditChecklist() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 flex justify-center">
-        <p>Memuat data audit...</p>
-      </div>
-    );
-  }
-
-  const currentDomainObj = domains.find(d => d.id === currentDomain);
-  const currentSubdomain = currentDomainObj?.subdomains[currentSubdomainIndex];
-
-  if (!currentSubdomain) {
-    return (
-      <div className="p-6 flex justify-center">
-        <p>Tidak ada pertanyaan audit yang tersedia.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Button 
