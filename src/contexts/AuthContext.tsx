@@ -1,87 +1,114 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
-
-// Mock user data for demo purposes
-const mockUsers = [
-  {
-    id: 1,
-    name: "Admin User",
-    email: "admin@cobain.com",
-    password: "admin123",
-    role: "admin",
-  },
-  {
-    id: 2,
-    name: "Auditor User",
-    email: "auditor@cobain.com",
-    password: "auditor123",
-    role: "auditor",
-  },
-];
-
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-}
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
   isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  signUpWithEmail: (email: string, password: string, name: string) => Promise<{success: boolean, error?: string}>;
+  signInWithGoogle: () => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored auth data on component mount
-    const storedUser = localStorage.getItem("cobain_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API login call
-    const foundUser = mockUsers.find(
-      (u) => u.email === email && u.password === password
-    );
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (foundUser) {
-      const userData = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        role: foundUser.role,
-      };
-      setUser(userData);
-      localStorage.setItem("cobain_user", JSON.stringify(userData));
+      if (error) {
+        console.error("Login error:", error.message);
+        return false;
+      }
       return true;
+    } catch (error) {
+      console.error("Unexpected login error:", error);
+      return false;
     }
-    return false;
   };
 
-  const logout = () => {
+  const signUpWithEmail = async (
+    email: string, 
+    password: string, 
+    name: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+          },
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || "Terjadi kesalahan saat pendaftaran" };
+    }
+  };
+
+  const signInWithGoogle = async (): Promise<void> => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem("cobain_user");
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        session,
         loading,
-        login,
-        logout,
         isAuthenticated: !!user,
+        login,
+        signUpWithEmail,
+        signInWithGoogle,
+        logout,
       }}
     >
       {children}

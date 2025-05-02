@@ -59,9 +59,14 @@ export function Navbar() {
                   </Button>
                 </>
               ) : (
-                <Link to="/login">
-                  <Button>{t("login.submit")}</Button>
-                </Link>
+                <>
+                  <Link to="/login">
+                    <Button>Masuk</Button>
+                  </Link>
+                  <Link to="/signup">
+                    <Button variant="outline">Daftar</Button>
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -119,9 +124,14 @@ export function Navbar() {
                       </Button>
                     </>
                   ) : (
-                    <Link to="/login" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full">{t("login.submit")}</Button>
-                    </Link>
+                    <>
+                      <Link to="/login" onClick={() => setIsOpen(false)}>
+                        <Button className="w-full">Masuk</Button>
+                      </Link>
+                      <Link to="/signup" onClick={() => setIsOpen(false)}>
+                        <Button variant="outline" className="w-full">Daftar</Button>
+                      </Link>
+                    </>
                   )}
                   
                   <div className="flex space-x-2 pt-4">

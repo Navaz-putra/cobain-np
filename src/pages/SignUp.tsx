@@ -11,12 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 
-export default function Login() {
+export default function SignUp() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithGoogle } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,32 +27,25 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const success = await login(email, password);
+      const { success, error } = await signUpWithEmail(email, password, name);
       if (success) {
         toast({
-          title: "Login berhasil",
-          description: "Selamat datang di platform COBAIN",
+          title: "Pendaftaran berhasil",
+          description: "Silakan periksa email Anda untuk konfirmasi akun",
         });
-        
-        // Redirect based on user role (determined in login function)
-        const userData = JSON.parse(localStorage.getItem("cobain_user") || "{}");
-        
-        if (userData.role === "admin") {
-          navigate("/admin-dashboard");
-        } else {
-          navigate("/auditor-dashboard");
-        }
+        // Redirect to login page after successful registration
+        navigate("/login");
       } else {
         toast({
-          title: "Login gagal",
-          description: "Email atau kata sandi tidak valid. Silakan coba lagi.",
+          title: "Pendaftaran gagal",
+          description: error || "Terjadi kesalahan saat pendaftaran",
           variant: "destructive",
         });
       }
     } catch (error) {
       toast({
-        title: "Login error",
-        description: "Terjadi kesalahan yang tidak terduga. Silakan coba lagi.",
+        title: "Kesalahan sistem",
+        description: "Terjadi kesalahan yang tidak terduga",
         variant: "destructive",
       });
     } finally {
@@ -59,7 +53,7 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignUp = async () => {
     try {
       await signInWithGoogle();
     } catch (error) {
@@ -84,15 +78,25 @@ export default function Login() {
             alt="COBAIN Logo" 
             className="mx-auto h-16 w-16 mb-2" 
           />
-          <CardTitle className="text-2xl font-bold">{t("login.title")}</CardTitle>
+          <CardTitle className="text-2xl font-bold">Daftar Akun</CardTitle>
           <CardDescription>
-            Masukkan kredensial Anda untuk mengakses akun
+            Buat akun untuk mulai menggunakan platform COBAIN
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{t("login.email")}</Label>
+              <Label htmlFor="name">Nama Lengkap</Label>
+              <Input
+                id="name"
+                placeholder="Nama Lengkap"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -104,13 +108,7 @@ export default function Login() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">{t("login.password")}</Label>
-                <a
-                  href="#"
-                  className="text-sm text-cobain-blue dark:text-blue-400 hover:underline"
-                >
-                  {t("login.forgotPassword")}
-                </a>
+                <Label htmlFor="password">Kata Sandi</Label>
               </div>
               <div className="relative">
                 <Input
@@ -136,7 +134,7 @@ export default function Login() {
             </div>
 
             <Button className="w-full" type="submit" disabled={loading}>
-              {loading ? "Masuk..." : t("login.submit")}
+              {loading ? "Mendaftar..." : "Daftar"}
             </Button>
 
             <div className="flex items-center gap-2 mt-4">
@@ -149,7 +147,7 @@ export default function Login() {
               type="button"
               variant="outline" 
               className="w-full" 
-              onClick={handleGoogleLogin}
+              onClick={handleGoogleSignUp}
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="h-5 w-5 mr-2" alt="Google Icon" />
               Lanjutkan dengan Google
@@ -158,21 +156,12 @@ export default function Login() {
         </form>
         <CardFooter>
           <div className="text-center w-full text-sm">
-            Belum memiliki akun?{" "}
-            <Link to="/signup" className="text-blue-600 hover:underline">
-              Daftar
+            Sudah memiliki akun?{" "}
+            <Link to="/login" className="text-blue-600 hover:underline">
+              Masuk
             </Link>
           </div>
         </CardFooter>
-
-        {/* Demo credentials */}
-        <div className="px-6 pb-6 pt-2">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            <p className="font-semibold mb-1">Kredensial Demo:</p>
-            <p>Admin: admin@cobain.com / admin123</p>
-            <p>Auditor: auditor@cobain.com / auditor123</p>
-          </div>
-        </div>
       </Card>
     </div>
   );
