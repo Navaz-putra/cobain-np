@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 // Define maturity level descriptions
 const maturityLevels = [
@@ -133,6 +137,7 @@ export default function AuditChecklist() {
   const [questions, setQuestions] = useState<AuditQuestion[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [answers, setAnswers] = useState<Record<string, { maturity_level: number; notes: string | null }>>({});
+  const [missingAnswers, setMissingAnswers] = useState<string[]>([]);
 
   // Fetch audit data and questions from Supabase
   useEffect(() => {
@@ -278,6 +283,8 @@ export default function AuditChecklist() {
       const domain = domains.find(d => d.id === currentDomain);
       if (domain && domain.subdomains.length > 0 && domain.subdomains[currentSubdomainIndex]) {
         setQuestions(domain.subdomains[currentSubdomainIndex].questions);
+        // Clear missing answers highlight when changing domain/subdomain
+        setMissingAnswers([]);
       }
     }
   }, [currentDomain, currentSubdomainIndex, domains]);
@@ -292,6 +299,9 @@ export default function AuditChecklist() {
       notes: newAnswers[questionId]?.notes || null
     };
     setAnswers(newAnswers);
+    
+    // Remove from missing answers if it was there
+    setMissingAnswers(prev => prev.filter(id => id !== questionId));
     
     // Update questions state for UI
     setQuestions(questions.map(q => 
@@ -378,7 +388,30 @@ export default function AuditChecklist() {
     }
   };
 
+  const validateSubdomainAnswers = () => {
+    // Check if all questions in the current subdomain have maturity levels assigned
+    const missingQuestionIds = questions
+      .filter(q => !answers[q.id]?.maturity_level && answers[q.id]?.maturity_level !== 0)
+      .map(q => q.id);
+    
+    if (missingQuestionIds.length > 0) {
+      setMissingAnswers(missingQuestionIds);
+      toast({
+        title: "Peringatan",
+        description: "Semua tingkat kematangan harus diisi sebelum melanjutkan",
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
   const goToNextSubdomain = () => {
+    // Validate that all questions in current subdomain have answers
+    if (!validateSubdomainAnswers()) {
+      return;
+    }
+    
     const currentDomainObj = domains.find(d => d.id === currentDomain);
     if (!currentDomainObj) return;
     
@@ -396,6 +429,8 @@ export default function AuditChecklist() {
           title: "Audit Selesai",
           description: "Anda telah menyelesaikan semua pertanyaan audit",
         });
+        // Save answers when reaching the end
+        saveAnswers();
       }
     }
   };
@@ -484,33 +519,48 @@ export default function AuditChecklist() {
 
           <div className="space-y-6">
             {currentSubdomain.questions.map((question) => (
-              <div key={question.id} className="border p-4 rounded-md">
+              <div 
+                key={question.id} 
+                className={`border p-4 rounded-md ${missingAnswers.includes(question.id) ? 'border-red-500' : ''}`}
+              >
                 <div className="mb-4">
                   <h5 className="font-medium mb-2">{question.text}</h5>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div>
                       <label className="text-sm font-medium mb-1 block">
-                        Tingkat Kematangan
+                        Tingkat Kematangan <span className="text-red-500">*</span>
                       </label>
-                      <Select
-                        value={String(question.answer?.maturity_level || "0")}
+                      <RadioGroup
+                        value={String(question.answer?.maturity_level || "")}
                         onValueChange={(value) => handleMaturityLevelChange(question.id, value)}
+                        className="grid grid-cols-2 gap-2 mt-2"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih tingkat kematangan" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {maturityLevels.map((level) => (
-                            <SelectItem key={level.value} value={String(level.value)}>
+                        {maturityLevels.map((level) => (
+                          <div key={level.value} className="flex items-center space-x-2">
+                            <RadioGroupItem
+                              value={String(level.value)}
+                              id={`${question.id}-level-${level.value}`}
+                            />
+                            <Label 
+                              htmlFor={`${question.id}-level-${level.value}`}
+                              className="text-sm cursor-pointer"
+                            >
                               {level.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {maturityLevels.find(l => l.value === (question.answer?.maturity_level || 0))?.description}
-                      </p>
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                      {missingAnswers.includes(question.id) && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Tingkat kematangan wajib diisi
+                        </p>
+                      )}
+                      {question.answer?.maturity_level !== undefined && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
+                        </p>
+                      )}
                     </div>
                     
                     <div>
