@@ -67,8 +67,9 @@ const auditFormSchema = z.object({
   domains: z.array(z.string()).nonempty({
     message: "Pilih minimal satu domain COBIT.",
   }),
-  agreeToTerms: z.literal(true, {
-    errorMap: () => ({ message: "Anda harus menyetujui syarat dan ketentuan." }),
+  // Changed this from literal(true) to boolean().refine() to fix error #1
+  agreeToTerms: z.boolean().refine(val => val === true, {
+    message: "Anda harus menyetujui syarat dan ketentuan.",
   }),
 });
 
@@ -90,7 +91,7 @@ export default function StartAudit() {
       organization: "",
       scope: "",
       domains: [],
-      agreeToTerms: false,
+      agreeToTerms: false, // This is now allowed with our schema fix
     },
   });
 
@@ -112,13 +113,13 @@ export default function StartAudit() {
         : [...prev, domain]
     );
     
-    // Update form value
+    // Update form value - fix for error #2
     const currentDomains = form.getValues("domains");
-    if (currentDomains.includes(domain)) {
-      form.setValue("domains", currentDomains.filter(d => d !== domain));
-    } else {
-      form.setValue("domains", [...currentDomains, domain]);
-    }
+    const updatedDomains = currentDomains.includes(domain)
+      ? currentDomains.filter(d => d !== domain)
+      : [...currentDomains, domain];
+    
+    form.setValue("domains", updatedDomains, { shouldValidate: true });
   };
 
   // Check authentication
