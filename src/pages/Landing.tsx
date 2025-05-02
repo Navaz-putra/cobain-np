@@ -1,4 +1,3 @@
-
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -36,11 +35,6 @@ export default function Landing() {
                       Mulai
                     </Button>
                   </Link>}
-                <Link to="/signup">
-                  <Button size="lg" variant="outline" className="border-white hover:bg-white/10 text-zinc-50">
-                    Daftar
-                  </Button>
-                </Link>
               </div>
             </div>
             <div className="md:w-1/2 flex justify-center">

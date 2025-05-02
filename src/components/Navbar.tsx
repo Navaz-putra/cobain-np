@@ -38,40 +38,38 @@ export function Navbar() {
           <div className="flex-1"></div>
 
           {/* Desktop menu */}
-          <div className="hidden md:block">
-            <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
-                <>
-                  <Link to="/">
-                    <Button variant="ghost">{t("nav.home")}</Button>
+          <div className="hidden md:flex items-center space-x-4">
+            {isAuthenticated ? (
+              <>
+                <Link to="/">
+                  <Button variant="ghost">{t("nav.home")}</Button>
+                </Link>
+                <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
+                  <Button variant="ghost">{t("nav.dashboard")}</Button>
+                </Link>
+                <Link to="/audit">
+                  <Button variant="ghost">{t("nav.audit")}</Button>
+                </Link>
+                {user?.role === "admin" && (
+                  <Link to="/users">
+                    <Button variant="ghost">{t("nav.users")}</Button>
                   </Link>
-                  <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
-                    <Button variant="ghost">{t("nav.dashboard")}</Button>
-                  </Link>
-                  <Link to="/audit">
-                    <Button variant="ghost">{t("nav.audit")}</Button>
-                  </Link>
-                  {user?.role === "admin" && (
-                    <Link to="/users">
-                      <Button variant="ghost">{t("nav.users")}</Button>
-                    </Link>
-                  )}
-                  <Button variant="ghost" onClick={logout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {t("nav.logout")}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login">
-                    <Button className="bg-cobain-blue hover:bg-cobain-navy">Masuk</Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button variant="outline" className="border-cobain-blue text-cobain-blue hover:bg-cobain-blue/10">Daftar</Button>
-                  </Link>
-                </>
-              )}
-            </div>
+                )}
+                <Button variant="ghost" onClick={logout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t("nav.logout")}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button className="bg-cobain-blue hover:bg-cobain-navy">Masuk</Button>
+                </Link>
+                <Link to="/signup">
+                  <Button variant="outline" className="border-cobain-blue text-cobain-blue hover:bg-cobain-blue/10">Daftar</Button>
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="hidden md:flex items-center ml-4 space-x-2">
