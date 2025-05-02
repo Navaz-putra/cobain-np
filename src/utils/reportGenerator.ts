@@ -1,4 +1,3 @@
-
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import autoTable from 'jspdf-autotable';
@@ -606,7 +605,9 @@ const addHeatMap = async (
   
   if (!ctx) throw new Error("Could not get canvas context");
   
-  const sortedData = [...data].sort((a, b) => (b.targetLevel - b.currentLevel) - (a.targetLevel - a.currentLevel));
+  const sortedData = [...data].sort((a, b) => 
+    (b.targetLevel - b.currentLevel) - (a.targetLevel - a.currentLevel)
+  );
   
   const chart = new Chart(ctx, {
     type: 'bar',

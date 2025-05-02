@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -15,10 +14,10 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, FilePdf 
+  ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, FileText 
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { generateAuditReport } from "@/utils/reportGenerator";
+import { PDFReport } from "@/components/PDFReport";
 
 // Mock audit data
 const mockAudits = [
@@ -240,14 +239,12 @@ export default function AuditorDashboard() {
             )}
 
             {audits.length > 0 && (
-              <Button 
+              <PDFReport
+                auditId={audits[0]?.id}
                 className="w-full justify-start" 
                 variant="outline"
-                onClick={() => handleGenerateReport(audits[0]?.id)}
-              >
-                <FilePdf className="mr-2 h-4 w-4" />
-                {t("auditor.viewResults")}
-              </Button>
+                label={t("auditor.viewResults")}
+              />
             )}
           </CardContent>
         </Card>
@@ -336,14 +333,12 @@ export default function AuditorDashboard() {
                       <div className="sm:text-right flex flex-col justify-between items-start sm:items-end">
                         <div className="mb-2">{getStatusBadge(audit.status)}</div>
                         <div className="flex gap-2">
-                          <Button 
-                            onClick={() => handleGenerateReport(audit.id)} 
+                          <PDFReport
+                            auditId={audit.id}
                             variant="outline" 
                             size="sm"
-                          >
-                            <FilePdf className="mr-2 h-4 w-4" />
-                            <span>Laporan</span>
-                          </Button>
+                            label="Laporan"
+                          />
                           <Link to={`/audit-checklist/${audit.id}`}>
                             <Button variant="outline" size="sm">
                               <span>Lihat</span>

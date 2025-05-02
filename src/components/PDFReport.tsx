@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { FilePdf } from "lucide-react";
+import { FileText } from "lucide-react"; // Changed from FilePdf to FileText
 import { generateAuditReport } from '@/utils/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 
@@ -53,7 +53,7 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       size={size}
       onClick={handleGenerateReport}
     >
-      {showIcon && <FilePdf className="mr-2 h-4 w-4" />}
+      {showIcon && <FileText className="mr-2 h-4 w-4" />}
       {label}
     </Button>
   );
