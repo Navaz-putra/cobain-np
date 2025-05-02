@@ -138,28 +138,6 @@ export default function AuditorDashboard() {
     }
   };
   
-  const handleGenerateReport = async (auditId: string) => {
-    try {
-      toast({
-        title: "Generating Report",
-        description: "Please wait while we generate your PDF report..."
-      });
-      
-      await generateAuditReport(auditId);
-      
-      toast({
-        title: "Success",
-        description: "Report has been generated and downloaded"
-      });
-    } catch (error) {
-      console.error("Error generating report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate audit report"
-      });
-    }
-  };
-
   const getAuditProgress = async (auditId: string) => {
     try {
       // Get total questions

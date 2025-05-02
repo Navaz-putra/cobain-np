@@ -2,38 +2,12 @@ import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import autoTable from 'jspdf-autotable';
 import { Chart, registerables } from 'chart.js';
-import { renderToString } from 'react-dom/server';
 
 // Register all chart.js components
 Chart.register(...registerables);
 
-// Define data structure types
-interface MaturityData {
-  domain: string;
-  domainName: string;
-  currentLevel: number;
-  targetLevel: number;
-}
-
-interface AuditResult {
-  domain_id: string;
-  domain_name: string;
-  subdomain_id: string;
-  subdomain_name: string;
-  question_text: string;
-  maturity_level: number;
-  notes: string | null;
-}
-
-interface Recommendation {
-  domain: string;
-  description: string;
-  priority: 'High' | 'Medium' | 'Low';
-  impact: string;
-}
-
 // Domain and subdomain name mappings
-const domainNames: Record<string, string> = {
+const domainNames = {
   "EDM": "Evaluate, Direct and Monitor",
   "APO": "Align, Plan and Organize",
   "BAI": "Build, Acquire and Implement",
@@ -93,7 +67,7 @@ const subdomainNames: Record<string, string> = {
   "MEA04": "Memantau, Mengevaluasi, dan Menilai Jaminan"
 };
 
-export const generateAuditReport = async (auditId: string): Promise<void> => {
+export const generateAuditReport = async (auditId: string) => {
   try {
     // Fetch audit details
     const { data: auditData, error: auditError } = await supabase
@@ -230,7 +204,7 @@ export const generateAuditReport = async (auditId: string): Promise<void> => {
   }
 };
 
-const calculateDomainMaturityLevels = (results: AuditResult[]): MaturityData[] => {
+const calculateDomainMaturityLevels = (results: any[]) => {
   const domainMap: Record<string, { total: number; count: number }> = {};
   
   // Calculate average maturity level for each domain
@@ -252,7 +226,7 @@ const calculateDomainMaturityLevels = (results: AuditResult[]): MaturityData[] =
   }));
 };
 
-const generateExecutiveSummary = (maturityData: MaturityData[]): string => {
+const generateExecutiveSummary = (maturityData: any[]) => {
   const avgMaturity = maturityData.reduce((sum, domain) => sum + domain.currentLevel, 0) / maturityData.length;
   
   // Find highest and lowest domains
@@ -275,7 +249,7 @@ while the lowest performing domain is ${lowestDomain.domain} (${lowestDomain.dom
 This assessment identifies gaps between current and target maturity levels, and provides targeted recommendations to improve IT governance and management practices.`;
 };
 
-const generateRecommendations = (maturityData: MaturityData[]): Recommendation[] => {
+const generateRecommendations = (maturityData: any[]) => {
   return maturityData.map(domain => {
     const gap = domain.targetLevel - domain.currentLevel;
     let priority: 'High' | 'Medium' | 'Low' = 'Low';
@@ -314,7 +288,7 @@ const generateRecommendations = (maturityData: MaturityData[]): Recommendation[]
 
 const addMaturityBarChart = async (
   pdf: jsPDF, 
-  data: MaturityData[], 
+  data: any[], 
   x: number, 
   y: number
 ): Promise<void> => {
@@ -329,22 +303,22 @@ const addMaturityBarChart = async (
   const chart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: data.map(d => d.domain),
+      labels: data.map((d) => d.domain),
       datasets: [
         {
           label: 'Current Level',
-          data: data.map(d => d.currentLevel),
+          data: data.map((d) => d.currentLevel),
           backgroundColor: 'rgba(54, 162, 235, 0.7)',
           borderColor: 'rgb(54, 162, 235)',
           borderWidth: 1
         },
         {
           label: 'Target Level',
-          data: data.map(d => d.targetLevel),
+          data: data.map((d) => d.targetLevel),
           backgroundColor: 'rgba(153, 102, 255, 0.5)',
           borderColor: 'rgb(153, 102, 255)',
           borderWidth: 1,
-          borderDash: [5, 5]
+          // Remove borderDash as it's not a valid property for this chart type
         }
       ]
     },
@@ -382,7 +356,7 @@ const addMaturityBarChart = async (
 
 const addRadarChart = async (
   pdf: jsPDF, 
-  data: MaturityData[], 
+  data: any[], 
   x: number, 
   y: number
 ): Promise<void> => {
@@ -397,11 +371,11 @@ const addRadarChart = async (
   const chart = new Chart(ctx, {
     type: 'radar',
     data: {
-      labels: data.map(d => d.domain),
+      labels: data.map((d) => d.domain),
       datasets: [
         {
           label: 'Current Level',
-          data: data.map(d => d.currentLevel),
+          data: data.map((d) => d.currentLevel),
           backgroundColor: 'rgba(54, 162, 235, 0.3)',
           borderColor: 'rgb(54, 162, 235)',
           borderWidth: 1,
@@ -409,10 +383,11 @@ const addRadarChart = async (
         },
         {
           label: 'Target Level',
-          data: data.map(d => d.targetLevel),
+          data: data.map((d) => d.targetLevel),
           backgroundColor: 'rgba(153, 102, 255, 0.1)',
           borderColor: 'rgb(153, 102, 255)',
           borderWidth: 1,
+          // For radar charts, borderDash is valid
           borderDash: [5, 5],
           pointBackgroundColor: 'rgb(153, 102, 255)'
         }
@@ -470,9 +445,9 @@ const addRadarChart = async (
   chart.destroy();
 };
 
-const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: number): void => {
+const addDetailedResultsTable = (pdf: jsPDF, results: any[], startY: number) => {
   // Group results by domain and subdomain
-  const groupedResults: Record<string, Record<string, AuditResult[]>> = {};
+  const groupedResults: Record<string, Record<string, any[]>> = {};
   
   results.forEach(result => {
     if (!groupedResults[result.domain_id]) {
@@ -547,7 +522,7 @@ const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: num
   });
 };
 
-const addRecommendationsTable = (pdf: jsPDF, recommendations: Recommendation[], startY: number): void => {
+const addRecommendationsTable = (pdf: jsPDF, recommendations: any[], startY: number) => {
   const tableData = recommendations.map(r => [
     r.domain,
     r.description,
@@ -593,7 +568,7 @@ const addRecommendationsTable = (pdf: jsPDF, recommendations: Recommendation[], 
 
 const addHeatMap = async (
   pdf: jsPDF, 
-  data: MaturityData[], 
+  data: any[], 
   x: number, 
   y: number
 ): Promise<void> => {
@@ -605,7 +580,8 @@ const addHeatMap = async (
   
   if (!ctx) throw new Error("Could not get canvas context");
   
-  const sortedData = [...data].sort((a, b) => 
+  // Fix the spread operator issue by creating a proper array
+  const sortedData = Array.from(data).sort((a, b) => 
     (b.targetLevel - b.currentLevel) - (a.targetLevel - a.currentLevel)
   );
   
