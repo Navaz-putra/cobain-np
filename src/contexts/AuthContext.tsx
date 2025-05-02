@@ -4,7 +4,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
-  user: User | null;
+  user: (User & { name?: string }) | null;
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
@@ -17,7 +17,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<(User & { name?: string }) | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,14 +26,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        if (session?.user) {
+          // Extract name from user metadata and add it to the user object
+          const userData = {
+            ...session.user,
+            name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || '',
+          };
+          setUser(userData);
+        } else {
+          setUser(null);
+        }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        // Extract name from user metadata and add it to the user object
+        const userData = {
+          ...session.user,
+          name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || '',
+        };
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
     });
 
