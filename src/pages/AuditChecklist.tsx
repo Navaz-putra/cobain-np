@@ -11,30 +11,22 @@ import {
   CardTitle 
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 // Define maturity level descriptions
 const maturityLevels = [
-  { value: 0, label: "0 - Incomplete", description: "Process is not implemented or fails to achieve its purpose" },
-  { value: 1, label: "1 - Performed", description: "Process is implemented and achieves its purpose" },
-  { value: 2, label: "2 - Managed", description: "Process is planned, monitored and adjusted" },
-  { value: 3, label: "3 - Established", description: "Process is well defined and follows standards" },
-  { value: 4, label: "4 - Predictable", description: "Process is measured and controlled" },
-  { value: 5, label: "5 - Optimizing", description: "Process is continuously improved" }
+  { value: 0, label: "0", description: "Incomplete: Process is not implemented or fails to achieve its purpose" },
+  { value: 1, label: "1", description: "Performed: Process is implemented and achieves its purpose" },
+  { value: 2, label: "2", description: "Managed: Process is planned, monitored and adjusted" },
+  { value: 3, label: "3", description: "Established: Process is well defined and follows standards" },
+  { value: 4, label: "4", description: "Predictable: Process is measured and controlled" },
+  { value: 5, label: "5", description: "Optimizing: Process is continuously improved" }
 ];
 
 // Define types for our data
@@ -61,7 +53,7 @@ interface Subdomain {
   questions: AuditQuestion[];
 }
 
-// Define a more comprehensive set of domain and subdomain names
+// Define domain and subdomain names
 const domainNames: Record<string, string> = {
   "EDM": "Evaluate, Direct and Monitor",
   "APO": "Align, Plan and Organize",
@@ -70,7 +62,7 @@ const domainNames: Record<string, string> = {
   "MEA": "Monitor, Evaluate and Assess"
 };
 
-// Define a more comprehensive set of subdomain names
+// Define subdomain names
 const subdomainNames: Record<string, string> = {
   // EDM Subdomains
   "EDM01": "Memastikan Kerangka Tata Kelola Ditetapkan dan Dipelihara",
@@ -468,6 +460,32 @@ export default function AuditChecklist() {
     );
   }
 
+  // Map maturity levels to colors for visual indication
+  const getMaturityColor = (level: number) => {
+    switch (level) {
+      case 0: return "maturity0"; 
+      case 1: return "maturity1";
+      case 2: return "maturity2";
+      case 3: return "maturity3";
+      case 4: return "maturity4";
+      case 5: return "maturity5";
+      default: return "default";
+    }
+  };
+
+  // Generate background colors for maturity level badges
+  const getMaturityBadgeColor = (level: number) => {
+    switch (level) {
+      case 0: return "bg-red-100 text-red-800";
+      case 1: return "bg-orange-100 text-orange-800";
+      case 2: return "bg-yellow-100 text-yellow-800";
+      case 3: return "bg-blue-100 text-blue-800";
+      case 4: return "bg-indigo-100 text-indigo-800";
+      case 5: return "bg-green-100 text-green-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Button 
@@ -524,38 +542,52 @@ export default function AuditChecklist() {
                 className={`border p-4 rounded-md ${missingAnswers.includes(question.id) ? 'border-red-500' : ''}`}
               >
                 <div className="mb-4">
-                  <h5 className="font-medium mb-2">{question.text}</h5>
+                  <h5 className="font-medium mb-4">{question.text}</h5>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="flex flex-col gap-6">
                     <div>
-                      <label className="text-sm font-medium mb-1 block">
+                      <label className="text-sm font-medium mb-2 block">
                         Tingkat Kematangan <span className="text-red-500">*</span>
                       </label>
-                      <RadioGroup
+                      
+                      <div className="mb-2 flex flex-wrap gap-2">
+                        {maturityLevels.map((level) => (
+                          <Badge 
+                            key={level.value}
+                            variant="outline"
+                            className={question.answer?.maturity_level === level.value ? 
+                              getMaturityBadgeColor(level.value) : ""}
+                          >
+                            {level.label} - {level.description.split(':')[0]}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <ToggleGroup 
+                        type="single" 
                         value={String(question.answer?.maturity_level || "")}
-                        onValueChange={(value) => handleMaturityLevelChange(question.id, value)}
-                        className="grid grid-cols-2 gap-2 mt-2"
+                        onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
+                        className="flex flex-wrap gap-2"
                       >
                         {maturityLevels.map((level) => (
-                          <div key={level.value} className="flex items-center space-x-2">
-                            <RadioGroupItem
-                              value={String(level.value)}
-                              id={`${question.id}-level-${level.value}`}
-                            />
-                            <Label 
-                              htmlFor={`${question.id}-level-${level.value}`}
-                              className="text-sm cursor-pointer"
-                            >
-                              {level.label}
-                            </Label>
-                          </div>
+                          <ToggleGroupItem 
+                            key={level.value} 
+                            value={String(level.value)}
+                            variant={getMaturityColor(level.value)}
+                            size="lg"
+                            aria-label={`Maturity Level ${level.label}`}
+                          >
+                            {level.label}
+                          </ToggleGroupItem>
                         ))}
-                      </RadioGroup>
+                      </ToggleGroup>
+                      
                       {missingAnswers.includes(question.id) && (
                         <p className="text-xs text-red-500 mt-1">
                           Tingkat kematangan wajib diisi
                         </p>
                       )}
+                      
                       {question.answer?.maturity_level !== undefined && (
                         <p className="text-xs text-muted-foreground mt-2">
                           {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
@@ -564,7 +596,7 @@ export default function AuditChecklist() {
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium mb-1 block">
+                      <label className="text-sm font-medium mb-2 block">
                         Catatan (Opsional)
                       </label>
                       <Textarea
