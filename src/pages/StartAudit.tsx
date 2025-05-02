@@ -78,7 +78,10 @@ export default function StartAudit() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [step, setStep] = useState(1);
-  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
+  
+  // Initialize with all domains selected
+  const allDomainIds = cobitDomains.map(domain => domain.id);
+  const [selectedDomains, setSelectedDomains] = useState<string[]>(allDomainIds);
 
   // Initialize the form
   const form = useForm<z.infer<typeof auditFormSchema>>({
@@ -89,7 +92,7 @@ export default function StartAudit() {
       auditDate: format(new Date(), "yyyy-MM-dd"),
       organization: "",
       scope: "",
-      domains: [],
+      domains: allDomainIds, // Initialize with all domains
       agreeToTerms: false,
     },
   });
@@ -104,9 +107,8 @@ export default function StartAudit() {
     navigate("/auditor-dashboard");
   };
 
-  // Fixed domain selection handling
+  // Fixed domain selection handling - now only used if user wants to deselect a domain
   const handleDomainToggle = (domainId: string) => {
-    // Use a callback function to avoid stale state issues
     setSelectedDomains((prevDomains) => {
       const isSelected = prevDomains.includes(domainId);
       const newDomains = isSelected 
@@ -158,7 +160,7 @@ export default function StartAudit() {
               </div>
               <div className={`flex-1 border-t-4 ${step >= 2 ? 'border-primary' : 'border-muted'} p-2`}>
                 <p className={`text-sm font-medium ${step === 2 ? 'text-primary' : 'text-muted-foreground'}`}>
-                  Pilih Domain COBIT
+                  Konfirmasi Domain COBIT
                 </p>
               </div>
               <div className={`flex-1 border-t-4 ${step >= 3 ? 'border-primary' : 'border-muted'} p-2`}>
@@ -270,9 +272,12 @@ export default function StartAudit() {
               {step === 2 && (
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium mb-2">Pilih Domain COBIT untuk Audit</h3>
+                    <h3 className="text-lg font-medium mb-2">Domain COBIT untuk Audit</h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Semua domain COBIT 2019 telah dipilih untuk audit Anda.
+                    </p>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Pilih domain COBIT 2019 yang ingin dimasukkan dalam audit ini. Domain yang dipilih akan menentukan pertanyaan assessment yang akan digunakan.
+                      Audit akan mencakup semua domain berikut:
                     </p>
                   </div>
 
@@ -285,12 +290,7 @@ export default function StartAudit() {
                           {cobitDomains.map((domain) => (
                             <Card 
                               key={domain.id}
-                              className={`cursor-pointer transition-colors ${
-                                selectedDomains.includes(domain.id) 
-                                  ? 'border-primary bg-primary/5' 
-                                  : ''
-                              }`}
-                              onClick={() => handleDomainToggle(domain.id)}
+                              className="border-primary bg-primary/5"
                             >
                               <CardHeader className="p-4">
                                 <div className="flex items-center justify-between">
@@ -303,12 +303,8 @@ export default function StartAudit() {
                                     </CardDescription>
                                   </div>
                                   <Checkbox 
-                                    checked={selectedDomains.includes(domain.id)}
-                                    onChange={(e) => {
-                                      // Prevent event bubbling to avoid duplicate calls
-                                      e.stopPropagation();
-                                      handleDomainToggle(domain.id);
-                                    }}
+                                    checked={true}
+                                    disabled={true}
                                   />
                                 </div>
                               </CardHeader>
@@ -349,7 +345,7 @@ export default function StartAudit() {
                           </div>
                           <div>
                             <p className="text-sm font-medium">Domain COBIT</p>
-                            <p className="text-sm">{selectedDomains.join(", ")}</p>
+                            <p className="text-sm">Semua domain COBIT 2019</p>
                           </div>
                         </div>
 

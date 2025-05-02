@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
-  CheckCircle, CircleX 
+  CheckCircle, CircleX, Filter, ListPlus, ListMinus 
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Mock data
 const mockUsers = [
@@ -45,38 +46,97 @@ const mockUsers = [
   { id: 4, name: "Jane Smith", email: "jane@example.com", role: "auditor", status: "active" },
 ];
 
+// Enhanced mock questions with subdomains
 const mockQuestions = [
   { 
     id: 1, 
     text: "Is there a documented IT security policy approved by management?", 
     domain: "EDM", 
     process: "EDM01", 
+    subdomain: "EDM01.01",
     practice: "EDM01.01", 
-    maturityLevel: 1 
+    maturityLevel: 1,
+    enabled: true
   },
   { 
     id: 2, 
     text: "Is there a risk assessment process established for IT-related risks?", 
     domain: "EDM", 
     process: "EDM03", 
+    subdomain: "EDM03.02",
     practice: "EDM03.02", 
-    maturityLevel: 2 
+    maturityLevel: 2,
+    enabled: true
   },
   { 
     id: 3, 
     text: "Are IT service levels defined and monitored?", 
     domain: "APO", 
     process: "APO09", 
+    subdomain: "APO09.03",
     practice: "APO09.03", 
-    maturityLevel: 3 
+    maturityLevel: 3,
+    enabled: false
   },
   { 
     id: 4, 
     text: "Is there a process for managing IT changes?", 
     domain: "BAI", 
     process: "BAI06", 
+    subdomain: "BAI06.01",
     practice: "BAI06.01", 
-    maturityLevel: 2 
+    maturityLevel: 2,
+    enabled: true
+  },
+  {
+    id: 5,
+    text: "Are system security requirements documented and validated?",
+    domain: "BAI",
+    process: "BAI03",
+    subdomain: "BAI03.04",
+    practice: "BAI03.04",
+    maturityLevel: 3,
+    enabled: true
+  },
+  {
+    id: 6,
+    text: "Is there a formal process for managing third-party services?",
+    domain: "APO",
+    process: "APO10",
+    subdomain: "APO10.01",
+    practice: "APO10.01",
+    maturityLevel: 2,
+    enabled: false
+  },
+];
+
+// Domain and subdomain structure
+const domainStructure = [
+  {
+    id: "EDM",
+    name: "Evaluate, Direct and Monitor",
+    subdomains: [
+      { id: "EDM01", name: "Ensured Governance Framework Setting and Maintenance" },
+      { id: "EDM02", name: "Ensured Benefits Delivery" },
+      { id: "EDM03", name: "Ensured Risk Optimization" },
+    ]
+  },
+  {
+    id: "APO",
+    name: "Align, Plan and Organize",
+    subdomains: [
+      { id: "APO01", name: "Managed IT Management Framework" },
+      { id: "APO09", name: "Managed Service Agreements" },
+      { id: "APO10", name: "Managed Vendors" },
+    ]
+  },
+  {
+    id: "BAI",
+    name: "Build, Acquire and Implement",
+    subdomains: [
+      { id: "BAI03", name: "Managed Solutions Identification and Build" },
+      { id: "BAI06", name: "Managed IT Changes" },
+    ]
   },
 ];
 
@@ -88,6 +148,9 @@ export default function AdminDashboard() {
   const [searchQuestion, setSearchQuestion] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAddQuestionDialogOpen, setIsAddQuestionDialogOpen] = useState(false);
+  const [selectedDomain, setSelectedDomain] = useState<string>("");
+  const [selectedSubdomain, setSelectedSubdomain] = useState<string>("");
+  const [questions, setQuestions] = useState(mockQuestions);
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -102,8 +165,10 @@ export default function AdminDashboard() {
     text: "",
     domain: "",
     process: "",
+    subdomain: "",
     practice: "",
     maturityLevel: "1",
+    enabled: true,
   });
 
   const filteredUsers = mockUsers.filter(
@@ -112,15 +177,24 @@ export default function AdminDashboard() {
       user.email.toLowerCase().includes(searchUser.toLowerCase())
   );
 
-  const filteredQuestions = mockQuestions.filter(
-    (question) =>
-      question.text.toLowerCase().includes(searchQuestion.toLowerCase()) ||
-      question.domain.toLowerCase().includes(searchQuestion.toLowerCase()) ||
-      question.process.toLowerCase().includes(searchQuestion.toLowerCase())
+  const filteredQuestions = questions.filter(
+    (question) => {
+      // Apply domain and subdomain filters first
+      if (selectedDomain && question.domain !== selectedDomain) {
+        return false;
+      }
+      if (selectedSubdomain && question.subdomain.split(".")[0] !== selectedSubdomain) {
+        return false;
+      }
+      
+      // Then apply search text filter
+      return question.text.toLowerCase().includes(searchQuestion.toLowerCase()) ||
+        question.domain.toLowerCase().includes(searchQuestion.toLowerCase()) ||
+        question.process.toLowerCase().includes(searchQuestion.toLowerCase());
+    }
   );
 
   const handleAddUser = () => {
-    // In a real app, this would be an API call
     toast({
       title: "User Added",
       description: `Added ${newUser.name} as ${newUser.role}`,
@@ -135,19 +209,63 @@ export default function AdminDashboard() {
   };
 
   const handleAddQuestion = () => {
-    // In a real app, this would be an API call
+    const newId = Math.max(...questions.map(q => q.id)) + 1;
+    const questionToAdd = {
+      id: newId,
+      text: newQuestion.text,
+      domain: newQuestion.domain,
+      process: newQuestion.process,
+      subdomain: newQuestion.subdomain,
+      practice: newQuestion.practice,
+      maturityLevel: parseInt(newQuestion.maturityLevel),
+      enabled: true
+    };
+    
+    setQuestions([...questions, questionToAdd]);
+    
     toast({
       title: "Question Added",
       description: "The audit question has been added successfully",
     });
+    
     setIsAddQuestionDialogOpen(false);
     setNewQuestion({
       text: "",
       domain: "",
       process: "",
+      subdomain: "",
       practice: "",
       maturityLevel: "1",
+      enabled: true,
     });
+  };
+
+  // Toggle question enabled status
+  const toggleQuestionStatus = (id: number) => {
+    setQuestions(prevQuestions => 
+      prevQuestions.map(q => 
+        q.id === id ? { ...q, enabled: !q.enabled } : q
+      )
+    );
+    
+    const question = questions.find(q => q.id === id);
+    toast({
+      title: question?.enabled ? "Question Disabled" : "Question Enabled",
+      description: `The question has been ${question?.enabled ? "removed from" : "added to"} the audit checklist`,
+    });
+  };
+
+  // Get available subdomains based on selected domain
+  const getAvailableSubdomains = () => {
+    if (!selectedDomain) return [];
+    const domain = domainStructure.find(d => d.id === selectedDomain);
+    return domain ? domain.subdomains : [];
+  };
+
+  // Reset subdomain when domain changes
+  const handleDomainChange = (domain: string) => {
+    setSelectedDomain(domain);
+    setSelectedSubdomain("");
   };
 
   return (
@@ -169,15 +287,15 @@ export default function AdminDashboard() {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm text-muted-foreground">Questions</span>
-                <span className="text-2xl font-bold">{mockQuestions.length}</span>
+                <span className="text-2xl font-bold">{questions.length}</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-sm text-muted-foreground">Domains</span>
-                <span className="text-2xl font-bold">3</span>
+                <span className="text-2xl font-bold">{domainStructure.length}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Processes</span>
-                <span className="text-2xl font-bold">4</span>
+                <span className="text-sm text-muted-foreground">Active Questions</span>
+                <span className="text-2xl font-bold">{questions.filter(q => q.enabled).length}</span>
               </div>
             </div>
           </CardContent>
@@ -296,7 +414,15 @@ export default function AdminDashboard() {
                     </Label>
                     <Select
                       value={newQuestion.domain}
-                      onValueChange={(value) => setNewQuestion({ ...newQuestion, domain: value })}
+                      onValueChange={(value) => {
+                        setNewQuestion({ 
+                          ...newQuestion, 
+                          domain: value,
+                          process: "", // Reset process when domain changes
+                          subdomain: "", // Reset subdomain when domain changes
+                          practice: "" // Reset practice when domain changes
+                        });
+                      }}
                     >
                       <SelectTrigger className="col-span-3">
                         <SelectValue placeholder="Select domain" />
@@ -314,13 +440,37 @@ export default function AdminDashboard() {
                     <Label htmlFor="process" className="text-right">
                       Process
                     </Label>
-                    <Input
-                      id="process"
+                    <Select
                       value={newQuestion.process}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, process: e.target.value })}
-                      placeholder="e.g., EDM01"
-                      className="col-span-3"
-                    />
+                      onValueChange={(value) => setNewQuestion({ ...newQuestion, process: value })}
+                      disabled={!newQuestion.domain}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select process" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {newQuestion.domain === "EDM" && (
+                          <>
+                            <SelectItem value="EDM01">EDM01</SelectItem>
+                            <SelectItem value="EDM02">EDM02</SelectItem>
+                            <SelectItem value="EDM03">EDM03</SelectItem>
+                          </>
+                        )}
+                        {newQuestion.domain === "APO" && (
+                          <>
+                            <SelectItem value="APO01">APO01</SelectItem>
+                            <SelectItem value="APO09">APO09</SelectItem>
+                            <SelectItem value="APO10">APO10</SelectItem>
+                          </>
+                        )}
+                        {newQuestion.domain === "BAI" && (
+                          <>
+                            <SelectItem value="BAI03">BAI03</SelectItem>
+                            <SelectItem value="BAI06">BAI06</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="practice" className="text-right">
@@ -329,7 +479,7 @@ export default function AdminDashboard() {
                     <Input
                       id="practice"
                       value={newQuestion.practice}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, practice: e.target.value })}
+                      onChange={(e) => setNewQuestion({ ...newQuestion, practice: e.target.value, subdomain: e.target.value })}
                       placeholder="e.g., EDM01.01"
                       className="col-span-3"
                     />
@@ -498,65 +648,152 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle>Audit Questions</CardTitle>
-              <CardDescription>Manage COBIT 2019 audit questions</CardDescription>
+              <CardDescription>Manage COBIT 2019 audit questions and checklists for each subdomain</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-between items-center mb-4">
-                <div className="relative w-full max-w-sm">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search questions..."
-                    className="pl-8"
-                    value={searchQuestion}
-                    onChange={(e) => setSearchQuestion(e.target.value)}
-                  />
+              <div className="flex flex-col space-y-4">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
+                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                    <Select
+                      value={selectedDomain}
+                      onValueChange={handleDomainChange}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="All Domains" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Domains</SelectItem>
+                        {domainStructure.map(domain => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.id} - {domain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Select
+                      value={selectedSubdomain}
+                      onValueChange={setSelectedSubdomain}
+                      disabled={!selectedDomain}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder="All Processes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Processes</SelectItem>
+                        {getAvailableSubdomains().map(subdomain => (
+                          <SelectItem key={subdomain.id} value={subdomain.id}>
+                            {subdomain.id} - {subdomain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                    <div className="relative w-full md:w-[300px]">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search questions..."
+                        className="pl-8"
+                        value={searchQuestion}
+                        onChange={(e) => setSearchQuestion(e.target.value)}
+                      />
+                    </div>
+                    
+                    <Dialog open={isAddQuestionDialogOpen} onOpenChange={setIsAddQuestionDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Question
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
+                  </div>
                 </div>
-                <Dialog open={isAddQuestionDialogOpen} onOpenChange={setIsAddQuestionDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Question
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-              </div>
-              
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Question</TableHead>
-                      <TableHead>Domain</TableHead>
-                      <TableHead>Process</TableHead>
-                      <TableHead>Level</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredQuestions.map((question) => (
-                      <TableRow key={question.id}>
-                        <TableCell className="font-medium">{question.id}</TableCell>
-                        <TableCell className="max-w-[300px] truncate">
-                          {question.text}
-                        </TableCell>
-                        <TableCell>{question.domain}</TableCell>
-                        <TableCell>{question.process}</TableCell>
-                        <TableCell>{question.maturityLevel}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon">
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Question</TableHead>
+                        <TableHead>Domain</TableHead>
+                        <TableHead>Process</TableHead>
+                        <TableHead>Level</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredQuestions.map((question) => (
+                        <TableRow key={question.id} className={!question.enabled ? "bg-muted/30" : ""}>
+                          <TableCell className="font-medium">{question.id}</TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            {question.text}
+                          </TableCell>
+                          <TableCell>{question.domain}</TableCell>
+                          <TableCell>{question.process}</TableCell>
+                          <TableCell>{question.maturityLevel}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {question.enabled ? (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="flex items-center text-green-600"
+                                  onClick={() => toggleQuestionStatus(question.id)}
+                                >
+                                  <CheckCircle className="mr-1 h-4 w-4" />
+                                  Aktif
+                                </Button>
+                              ) : (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="flex items-center text-red-600"
+                                  onClick={() => toggleQuestionStatus(question.id)}
+                                >
+                                  <CircleX className="mr-1 h-4 w-4" />
+                                  Nonaktif
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-2">
+                              {question.enabled ? (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => toggleQuestionStatus(question.id)}
+                                  title="Remove from checklist"
+                                >
+                                  <ListMinus className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => toggleQuestionStatus(question.id)}
+                                  title="Add to checklist"
+                                >
+                                  <ListPlus className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon">
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </CardContent>
           </Card>
