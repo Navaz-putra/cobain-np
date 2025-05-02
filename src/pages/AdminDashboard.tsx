@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -736,7 +735,7 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="Semua Domain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Semua Domain</SelectItem>
+                        <SelectItem value="all-domains">Semua Domain</SelectItem>
                         {domainStructure.map(domain => (
                           <SelectItem key={domain.id} value={domain.id}>
                             {domain.id} - {domain.name}
@@ -754,7 +753,7 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="Semua Subdomain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Semua Subdomain</SelectItem>
+                        <SelectItem value="all-subdomains">Semua Subdomain</SelectItem>
                         {selectedDomain && getAvailableSubdomains(selectedDomain).map(subdomain => (
                           <SelectItem key={subdomain.id} value={subdomain.id}>
                             {subdomain.id} - {subdomain.name}
