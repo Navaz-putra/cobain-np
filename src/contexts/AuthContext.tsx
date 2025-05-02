@@ -10,7 +10,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   signUpWithEmail: (email: string, password: string, name: string) => Promise<{success: boolean, error?: string}>;
-  signInWithGoogle: () => Promise<void>;
   logout: () => void;
 }
 
@@ -102,15 +101,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signInWithGoogle = async (): Promise<void> => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -125,7 +115,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAuthenticated: !!user,
         login,
         signUpWithEmail,
-        signInWithGoogle,
         logout,
       }}
     >

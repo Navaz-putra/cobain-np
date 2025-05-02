@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -16,7 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, signInWithGoogle } = useAuth();
+  const { login } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -56,18 +55,6 @@ export default function Login() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      toast({
-        title: "Kesalahan masuk dengan Google",
-        description: "Tidak dapat masuk dengan Google",
-        variant: "destructive",
-      });
     }
   };
 
@@ -137,22 +124,6 @@ export default function Login() {
 
             <Button className="w-full" type="submit" disabled={loading}>
               {loading ? "Masuk..." : t("login.submit")}
-            </Button>
-
-            <div className="flex items-center gap-2 mt-4">
-              <Separator className="flex-grow" />
-              <span className="text-xs text-muted-foreground">ATAU</span>
-              <Separator className="flex-grow" />
-            </div>
-
-            <Button 
-              type="button"
-              variant="outline" 
-              className="w-full" 
-              onClick={handleGoogleLogin}
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="h-5 w-5 mr-2" alt="Google Icon" />
-              Lanjutkan dengan Google
             </Button>
           </CardContent>
         </form>
