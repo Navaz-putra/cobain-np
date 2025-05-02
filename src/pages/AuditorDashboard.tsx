@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   ClipboardCheck, FileCheck, BarChart, Clock, ChevronRight, AlertCircle 
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock audit data
 const mockAudits = [
@@ -72,28 +73,41 @@ export default function AuditorDashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [isStartAuditDialogOpen, setIsStartAuditDialogOpen] = useState(false);
+  const [audits, setAudits] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // New audit form state
-  const [newAudit, setNewAudit] = useState({
-    title: "",
-    date: "",
-    domains: [],
-  });
-
-  const handleStartAudit = () => {
-    // In a real app, this would be an API call
-    toast({
-      title: "Audit Started",
-      description: `Created new audit: ${newAudit.title}`,
-    });
-    setIsStartAuditDialogOpen(false);
-    setNewAudit({
-      title: "",
-      date: "",
-      domains: [],
-    });
-  };
+  // Fetch user's audits from the database
+  useEffect(() => {
+    const fetchAudits = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoading(true);
+        
+        const { data, error } = await supabase
+          .from("audits")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+          
+        if (error) {
+          throw error;
+        }
+        
+        setAudits(data || []);
+      } catch (error) {
+        console.error("Error fetching audits:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load audit data"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAudits();
+  }, [user, toast]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -120,6 +134,33 @@ export default function AuditorDashboard() {
         );
       default:
         return null;
+    }
+  };
+
+  const getAuditProgress = async (auditId: string) => {
+    try {
+      // Get total questions
+      const { data: questionsData, error: questionsError } = await supabase
+        .from("cobit_questions")
+        .select("count");
+        
+      if (questionsError) throw questionsError;
+      
+      // Get answered questions
+      const { data: answersData, error: answersError } = await supabase
+        .from("audit_answers")
+        .select("count")
+        .eq("audit_id", auditId);
+        
+      if (answersError) throw answersError;
+      
+      const totalQuestions = questionsData[0]?.count || 0;
+      const answeredQuestions = answersData[0]?.count || 0;
+      
+      return totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+    } catch (error) {
+      console.error("Error calculating audit progress:", error);
+      return 0;
     }
   };
 
@@ -165,10 +206,15 @@ export default function AuditorDashboard() {
               </Button>
             </Link>
 
-            <Button className="w-full justify-start" variant="outline">
-              <FileCheck className="mr-2 h-4 w-4" />
-              {t("auditor.continueAudit")}
-            </Button>
+            {audits.length > 0 && (
+              <Link to={`/audit-checklist/${audits[0]?.id}`}>
+                <Button className="w-full justify-start" variant="outline">
+                  <FileCheck className="mr-2 h-4 w-4" />
+                  {t("auditor.continueAudit")}
+                </Button>
+              </Link>
+            )}
+
             <Button className="w-full justify-start" variant="outline">
               <BarChart className="mr-2 h-4 w-4" />
               {t("auditor.viewResults")}
@@ -234,9 +280,13 @@ export default function AuditorDashboard() {
               <CardDescription>Daftar penilaian COBIT 2019 Anda</CardDescription>
             </CardHeader>
             <CardContent>
-              {mockAudits.length > 0 ? (
+              {loading ? (
+                <div className="text-center py-8">
+                  <p>Memuat data audit...</p>
+                </div>
+              ) : audits.length > 0 ? (
                 <div className="space-y-4">
-                  {mockAudits.map((audit) => (
+                  {audits.map((audit) => (
                     <div
                       key={audit.id}
                       className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 p-4 border rounded-lg"
@@ -244,28 +294,23 @@ export default function AuditorDashboard() {
                       <div className="flex-1">
                         <h4 className="font-medium">{audit.title}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Tanggal: {audit.date}
+                          Tanggal: {audit.audit_date}
                         </p>
                         <div className="mt-2 flex items-center space-x-2">
                           <div className="text-sm">
-                            Domain: {audit.domains.join(", ")}
+                            Organisasi: {audit.organization}
                           </div>
                         </div>
                       </div>
 
                       <div className="sm:text-right flex flex-col justify-between items-start sm:items-end">
                         <div className="mb-2">{getStatusBadge(audit.status)}</div>
-                        <div className="w-full sm:w-32 flex flex-col">
-                          <div className="flex justify-between text-xs mb-1">
-                            <span>Progres</span>
-                            <span>{audit.progress}%</span>
-                          </div>
-                          <Progress value={audit.progress} className="h-2" />
-                        </div>
-                        <Button className="mt-2" variant="outline" size="sm">
-                          <span>Lihat</span>
-                          <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
+                        <Link to={`/audit-checklist/${audit.id}`}>
+                          <Button className="mt-2" variant="outline" size="sm">
+                            <span>Lihat</span>
+                            <ChevronRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   ))}

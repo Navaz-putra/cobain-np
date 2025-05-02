@@ -228,6 +228,7 @@ export default function AuditChecklist() {
     fetchAudit();
   }, [auditId, navigate, toast, user]);
 
+  // Update questions when domain or subdomain changes
   useEffect(() => {
     if (domains.length > 0 && currentDomain) {
       const domain = domains.find(d => d.id === currentDomain);
