@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { MaturityLevelInfo } from "@/components/MaturityLevelInfo";
 
 // Define maturity level descriptions
 const maturityLevels = [
@@ -643,11 +644,6 @@ export default function AuditChecklist() {
 
           <Button onClick={goToNextSubdomain}>
             Selanjutnya
-            {remainingDomains > 0 && (
-              <span className="ml-2 bg-white text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                {remainingDomains}
-              </span>
-            )}
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
         </CardFooter>
