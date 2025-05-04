@@ -237,8 +237,8 @@ export default function AuditorDashboard() {
         
       if (answersError) throw answersError;
       
-      const totalQuestions = parseInt(questionsData[0]?.count) || 0;
-      const answeredQuestions = parseInt(answersData[0]?.count) || 0;
+      const totalQuestions = parseInt(questionsData[0]?.count as string) || 0;
+      const answeredQuestions = parseInt(answersData[0]?.count as string) || 0;
       
       return totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
     } catch (error) {
