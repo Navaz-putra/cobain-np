@@ -94,11 +94,14 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [searchUser, setSearchUser] = useState("");
   const [searchQuestion, setSearchQuestion] = useState("");
+  const [searchAudit, setSearchAudit] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAddQuestionDialogOpen, setIsAddQuestionDialogOpen] = useState(false);
   const [isEditQuestionDialogOpen, setIsEditQuestionDialogOpen] = useState(false);
+  const [isStartAuditDialogOpen, setIsStartAuditDialogOpen] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string>("");
   const [selectedSubdomain, setSelectedSubdomain] = useState<string>("");
+  const [auditFilterDomain, setAuditFilterDomain] = useState<string>("");
   const [questions, setQuestions] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [audits, setAudits] = useState<any[]>([]);
@@ -127,6 +130,16 @@ export default function AdminDashboard() {
     text: "",
     domain_id: "",
     subdomain_id: "",
+  });
+
+  // New audit form state
+  const [newAudit, setNewAudit] = useState({
+    title: "",
+    organization: "",
+    description: "",
+    audit_date: new Date().toISOString().split('T')[0],
+    user_id: "",
+    domain_id: "all", // Default to all domains
   });
 
   // Fetch questions from database
@@ -234,6 +247,20 @@ export default function AdminDashboard() {
     user.email.toLowerCase().includes(searchUser.toLowerCase()) ||
     (user.user_metadata?.name || "").toLowerCase().includes(searchUser.toLowerCase())
   );
+
+  // Filter audits based on search and domain
+  const filteredAudits = audits.filter(audit => {
+    const domainFilter = auditFilterDomain ? 
+      (audit.domain_id === auditFilterDomain || audit.domain_id === "all" || !audit.domain_id) : 
+      true;
+      
+    const searchFilter = 
+      (audit.title || "").toLowerCase().includes(searchAudit.toLowerCase()) ||
+      (audit.organization || "").toLowerCase().includes(searchAudit.toLowerCase()) ||
+      (audit.user?.email || "").toLowerCase().includes(searchAudit.toLowerCase());
+      
+    return domainFilter && searchFilter;
+  });
 
   const handleAddUser = async () => {
     try {
@@ -421,6 +448,63 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleStartAudit = async () => {
+    try {
+      if (!newAudit.title || !newAudit.organization || !newAudit.user_id) {
+        toast({
+          title: "Error",
+          description: "Harap isi judul, organisasi, dan pilih auditor",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('audits')
+        .insert({
+          title: newAudit.title,
+          organization: newAudit.organization,
+          description: newAudit.description,
+          audit_date: newAudit.audit_date,
+          user_id: newAudit.user_id,
+          status: 'in_progress',
+          domain_id: newAudit.domain_id // Store selected domain
+        })
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+
+      // Refresh audits list
+      const { data: auditData } = await supabase
+        .from('audits')
+        .select('*, user:user_id(email)');
+
+      setAudits(auditData || []);
+      
+      toast({
+        title: "Audit Dimulai",
+        description: "Tugas audit baru telah dibuat dan ditugaskan ke auditor"
+      });
+      
+      setIsStartAuditDialogOpen(false);
+      setNewAudit({
+        title: "",
+        organization: "",
+        description: "",
+        audit_date: new Date().toISOString().split('T')[0],
+        user_id: "",
+        domain_id: "all"
+      });
+    } catch (error) {
+      console.error("Error starting audit:", error);
+      toast({
+        title: "Error",
+        description: "Gagal memulai audit"
+      });
+    }
+  };
+
   // Open edit dialog and populate form
   const openEditDialog = (question: any) => {
     setEditQuestion({
@@ -443,6 +527,13 @@ export default function AdminDashboard() {
   const handleDomainChange = (domain: string) => {
     setSelectedDomain(domain);
     setSelectedSubdomain("");
+  };
+
+  // Get domain name based on ID
+  const getDomainName = (domainId: string) => {
+    if (domainId === "all") return "Semua Domain";
+    const domain = domainStructure.find(d => d.id === domainId);
+    return domain ? domain.name : domainId;
   };
 
   return (
@@ -640,11 +731,125 @@ export default function AdminDashboard() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
-            <Button className="w-full justify-start" variant="outline">
-              <FileText className="mr-2 h-4 w-4" />
-              Lihat Laporan Audit
-            </Button>
+            
+            <Dialog open={isStartAuditDialogOpen} onOpenChange={setIsStartAuditDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full justify-start" variant="outline">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Mulai Audit Baru
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[525px]">
+                <DialogHeader>
+                  <DialogTitle>Mulai Audit Baru</DialogTitle>
+                  <DialogDescription>
+                    Tugaskan audit baru ke seorang auditor
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="audit-title" className="text-right">
+                      Judul Audit
+                    </Label>
+                    <Input
+                      id="audit-title"
+                      value={newAudit.title}
+                      onChange={(e) => setNewAudit({ ...newAudit, title: e.target.value })}
+                      className="col-span-3"
+                      placeholder="Contoh: Audit IT PT. XYZ"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="audit-org" className="text-right">
+                      Organisasi
+                    </Label>
+                    <Input
+                      id="audit-org"
+                      value={newAudit.organization}
+                      onChange={(e) => setNewAudit({ ...newAudit, organization: e.target.value })}
+                      className="col-span-3"
+                      placeholder="Contoh: PT. XYZ"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="audit-domain" className="text-right">
+                      Domain
+                    </Label>
+                    <Select
+                      value={newAudit.domain_id}
+                      onValueChange={(value) => setNewAudit({ ...newAudit, domain_id: value })}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Pilih domain" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Domain</SelectItem>
+                        {domainStructure.map(domain => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.id} - {domain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="audit-date" className="text-right">
+                      Tanggal Audit
+                    </Label>
+                    <Input
+                      id="audit-date"
+                      type="date"
+                      value={newAudit.audit_date}
+                      onChange={(e) => setNewAudit({ ...newAudit, audit_date: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="audit-auditor" className="text-right">
+                      Auditor
+                    </Label>
+                    <Select
+                      value={newAudit.user_id}
+                      onValueChange={(value) => setNewAudit({ ...newAudit, user_id: value })}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Pilih auditor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {users
+                          .filter(user => user.user_metadata?.role === "auditor")
+                          .map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.user_metadata?.name || user.email}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="audit-desc" className="text-right">
+                      Deskripsi
+                    </Label>
+                    <Textarea
+                      id="audit-desc"
+                      value={newAudit.description}
+                      onChange={(e) => setNewAudit({ ...newAudit, description: e.target.value })}
+                      className="col-span-3"
+                      rows={3}
+                      placeholder="Deskripsi singkat tentang audit"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleStartAudit}>Mulai Audit</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
 
@@ -1000,27 +1205,58 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-col space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Cari laporan audit..."
-                      className="pl-8"
-                    />
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0">
+                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                    <div className="relative w-full md:w-[300px]">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Cari laporan audit..."
+                        className="pl-8"
+                        value={searchAudit}
+                        onChange={(e) => setSearchAudit(e.target.value)}
+                      />
+                    </div>
+                    
+                    <Select
+                      value={auditFilterDomain}
+                      onValueChange={setAuditFilterDomain}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder="Filter domain" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Semua Domain</SelectItem>
+                        {domainStructure.map(domain => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.id} - {domain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  <Dialog open={isStartAuditDialogOpen} onOpenChange={setIsStartAuditDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Mulai Audit Baru
+                      </Button>
+                    </DialogTrigger>
+                  </Dialog>
                 </div>
                 
                 {loadingAudits ? (
                   <div className="text-center py-8">
                     <p>Memuat data audit...</p>
                   </div>
-                ) : audits.length > 0 ? (
+                ) : filteredAudits.length > 0 ? (
                   <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Judul</TableHead>
                           <TableHead>Organisasi</TableHead>
+                          <TableHead>Domain</TableHead>
                           <TableHead>Tanggal Audit</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Auditor</TableHead>
@@ -1028,10 +1264,11 @@ export default function AdminDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {audits.map((audit) => (
+                        {filteredAudits.map((audit) => (
                           <TableRow key={audit.id}>
                             <TableCell className="font-medium">{audit.title}</TableCell>
                             <TableCell>{audit.organization}</TableCell>
+                            <TableCell>{getDomainName(audit.domain_id || "all")}</TableCell>
                             <TableCell>{new Date(audit.audit_date).toLocaleDateString('id-ID')}</TableCell>
                             <TableCell>
                               <div className="flex items-center">
@@ -1066,6 +1303,7 @@ export default function AdminDashboard() {
                                   label="Ekspor PDF"
                                   showIcon={true}
                                   variant="outline"
+                                  allowDomainSelection={true}
                                 />
                               </div>
                             </TableCell>
