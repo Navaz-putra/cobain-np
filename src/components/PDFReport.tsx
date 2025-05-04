@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react"; 
+import { FileText, Download } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,29 +20,29 @@ export const PDFReport: React.FC<PDFReportProps> = ({
   variant = "outline",
   size = "default",
   showIcon = true,
-  label = "Generate Report"
+  label = "Ekspor PDF"
 }) => {
   const { toast } = useToast();
 
   const handleGenerateReport = async () => {
     try {
       toast({
-        title: "Generating Report",
-        description: "Please wait while we generate your PDF report..."
+        title: "Menghasilkan Laporan",
+        description: "Mohon tunggu sementara kami menghasilkan laporan PDF Anda..."
       });
       
       await generateAuditReport(auditId);
       
       toast({
-        title: "Success",
-        description: "Report has been generated and downloaded"
+        title: "Berhasil",
+        description: "Laporan telah dihasilkan dan diunduh"
       });
     } catch (error) {
       console.error("Error generating report:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to generate audit report. Please try again."
+        description: "Gagal menghasilkan laporan audit. Silakan coba lagi."
       });
     }
   };
@@ -54,7 +54,7 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       size={size}
       onClick={handleGenerateReport}
     >
-      {showIcon && <FileText className="mr-2 h-4 w-4" />}
+      {showIcon && <Download className="mr-2 h-4 w-4" />}
       {label}
     </Button>
   );

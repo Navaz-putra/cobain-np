@@ -45,6 +45,12 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 355.7 100% 97.3%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 48 96% 89%;
   }
 
   .dark {
@@ -83,6 +89,12 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    
+    --success: 142.1 70.6% 45.3%;
+    --success-foreground: 144.9 80.4% 10%;
+    
+    --warning: 48 96% 89%;
+    --warning-foreground: 38 92% 50%;
   }
 }
 
@@ -107,5 +119,37 @@
   
   .glass-card {
     @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md;
+  }
+  
+  .text-status-active {
+    @apply text-green-600 dark:text-green-400 font-medium;
+  }
+  
+  .text-status-inactive {
+    @apply text-red-600 dark:text-red-400 font-medium;
+  }
+  
+  .text-status-pending {
+    @apply text-yellow-600 dark:text-yellow-400 font-medium;
+  }
+  
+  .report-header {
+    @apply text-lg font-semibold border-b pb-2 mb-4;
+  }
+  
+  .report-section {
+    @apply mt-6 space-y-4;
+  }
+  
+  .report-table {
+    @apply w-full border-collapse;
+  }
+  
+  .report-table th {
+    @apply bg-gray-100 dark:bg-gray-800 text-left p-2 border;
+  }
+  
+  .report-table td {
+    @apply p-2 border;
   }
 }

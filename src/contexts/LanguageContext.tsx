@@ -83,6 +83,11 @@ const translations = {
     "landing.analysis.desc": "Menyediakan analisis kesenjangan komprehensif dan visualisasi antara tingkat kematangan saat ini dan target.",
     "landing.recommendations": "Rekomendasi Ahli",
     "landing.recommendations.desc": "Menghasilkan rekomendasi yang dapat ditindaklanjuti berdasarkan hasil penilaian untuk meningkatkan tata kelola TI.",
+    "admin.reports.title": "Laporan Audit",
+    "admin.reports.export": "Ekspor PDF",
+    "admin.reports.view": "Lihat Detail",
+    "admin.reports.delete": "Hapus Laporan",
+    "admin.reports.noData": "Tidak ada laporan yang tersedia",
   },
 };
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -13,7 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
-  CheckCircle, CircleX, Filter, ListPlus, ListMinus 
+  CheckCircle, CircleX, Filter, ListPlus, ListMinus,
+  FileOutput, Download
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -38,121 +40,50 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { PDFReport } from "@/components/PDFReport";
 
-// Mock data
-const mockUsers = [
-  { id: 1, name: "Admin User", email: "admin@cobain.com", role: "admin", status: "active" },
-  { id: 2, name: "Auditor User", email: "auditor@cobain.com", role: "auditor", status: "active" },
-  { id: 3, name: "John Doe", email: "john@example.com", role: "auditor", status: "inactive" },
-  { id: 4, name: "Jane Smith", email: "jane@example.com", role: "auditor", status: "active" },
-];
-
-// Enhanced mock questions with subdomains
-const mockQuestions = [
-  { 
-    id: 1, 
-    text: "Is there a documented IT security policy approved by management?", 
-    domain: "EDM", 
-    process: "EDM01", 
-    subdomain: "EDM01.01",
-    practice: "EDM01.01", 
-    maturityLevel: 1,
-    enabled: true
-  },
-  { 
-    id: 2, 
-    text: "Is there a risk assessment process established for IT-related risks?", 
-    domain: "EDM", 
-    process: "EDM03", 
-    subdomain: "EDM03.02",
-    practice: "EDM03.02", 
-    maturityLevel: 2,
-    enabled: true
-  },
-  { 
-    id: 3, 
-    text: "Are IT service levels defined and monitored?", 
-    domain: "APO", 
-    process: "APO09", 
-    subdomain: "APO09.03",
-    practice: "APO09.03", 
-    maturityLevel: 3,
-    enabled: false
-  },
-  { 
-    id: 4, 
-    text: "Is there a process for managing IT changes?", 
-    domain: "BAI", 
-    process: "BAI06", 
-    subdomain: "BAI06.01",
-    practice: "BAI06.01", 
-    maturityLevel: 2,
-    enabled: true
-  },
-  {
-    id: 5,
-    text: "Are system security requirements documented and validated?",
-    domain: "BAI",
-    process: "BAI03",
-    subdomain: "BAI03.04",
-    practice: "BAI03.04",
-    maturityLevel: 3,
-    enabled: true
-  },
-  {
-    id: 6,
-    text: "Is there a formal process for managing third-party services?",
-    domain: "APO",
-    process: "APO10",
-    subdomain: "APO10.01",
-    practice: "APO10.01",
-    maturityLevel: 2,
-    enabled: false
-  },
-];
-
-// Domain and subdomain structure
+// Domain and subdomain structure in Indonesian
 const domainStructure = [
   {
     id: "EDM",
-    name: "Evaluate, Direct and Monitor",
+    name: "Evaluasi, Arahkan dan Pantau",
     subdomains: [
-      { id: "EDM01", name: "Ensured Governance Framework Setting and Maintenance" },
-      { id: "EDM02", name: "Ensured Benefits Delivery" },
-      { id: "EDM03", name: "Ensured Risk Optimization" },
+      { id: "EDM01", name: "Memastikan Pengaturan dan Pemeliharaan Kerangka Tata Kelola" },
+      { id: "EDM02", name: "Memastikan Penyampaian Manfaat" },
+      { id: "EDM03", name: "Memastikan Optimalisasi Risiko" },
     ]
   },
   {
     id: "APO",
-    name: "Align, Plan and Organize",
+    name: "Selaraskan, Rencanakan dan Organisasikan",
     subdomains: [
-      { id: "APO01", name: "Managed IT Management Framework" },
-      { id: "APO09", name: "Managed Service Agreements" },
-      { id: "APO10", name: "Managed Vendors" },
+      { id: "APO01", name: "Mengelola Kerangka Manajemen TI" },
+      { id: "APO09", name: "Mengelola Perjanjian Layanan" },
+      { id: "APO10", name: "Mengelola Vendor" },
     ]
   },
   {
     id: "BAI",
-    name: "Build, Acquire and Implement",
+    name: "Bangun, Peroleh dan Implementasikan",
     subdomains: [
-      { id: "BAI03", name: "Managed Solutions Identification and Build" },
-      { id: "BAI06", name: "Managed IT Changes" },
+      { id: "BAI03", name: "Mengelola Identifikasi dan Pembuatan Solusi" },
+      { id: "BAI06", name: "Mengelola Perubahan TI" },
     ]
   },
   {
     id: "DSS",
-    name: "Deliver, Service and Support",
+    name: "Kirim, Layani dan Dukung",
     subdomains: [
-      { id: "DSS01", name: "Managed Operations" },
-      { id: "DSS02", name: "Managed Service Requests and Incidents" },
+      { id: "DSS01", name: "Mengelola Operasi" },
+      { id: "DSS02", name: "Mengelola Permintaan Layanan dan Insiden" },
     ]
   },
   {
     id: "MEA",
-    name: "Monitor, Evaluate and Assess",
+    name: "Pantau, Evaluasi dan Nilai",
     subdomains: [
-      { id: "MEA01", name: "Managed Performance and Conformance Monitoring" },
-      { id: "MEA02", name: "Managed System of Internal Control" },
+      { id: "MEA01", name: "Mengelola Pemantauan Kinerja dan Kesesuaian" },
+      { id: "MEA02", name: "Mengelola Sistem Pengendalian Internal" },
     ]
   }
 ];
@@ -170,7 +101,10 @@ export default function AdminDashboard() {
   const [selectedSubdomain, setSelectedSubdomain] = useState<string>("");
   const [questions, setQuestions] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingAudits, setLoadingAudits] = useState(true);
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -223,6 +157,60 @@ export default function AdminDashboard() {
     fetchQuestions();
   }, [toast]);
 
+  // Fetch users from database
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+        
+        if (userError) {
+          throw userError;
+        }
+
+        setUsers(userData?.users || []);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        toast({
+          title: 'Error',
+          description: 'Gagal mengambil data pengguna'
+        });
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, [toast]);
+
+  // Fetch audits from database
+  useEffect(() => {
+    const fetchAudits = async () => {
+      try {
+        setLoadingAudits(true);
+        const { data, error } = await supabase
+          .from('audits')
+          .select('*, user:user_id(email)');
+        
+        if (error) {
+          throw error;
+        }
+
+        setAudits(data || []);
+      } catch (error) {
+        console.error('Error fetching audits:', error);
+        toast({
+          title: 'Error',
+          description: 'Gagal mengambil data audit'
+        });
+      } finally {
+        setLoadingAudits(false);
+      }
+    };
+
+    fetchAudits();
+  }, [toast]);
+
   // Filtered questions based on search and domain/subdomain selection
   const filteredQuestions = questions.filter(
     (question) => {
@@ -241,18 +229,84 @@ export default function AdminDashboard() {
     }
   );
 
-  const handleAddUser = () => {
-    toast({
-      title: "User Added",
-      description: `Added ${newUser.name} as ${newUser.role}`,
-    });
-    setIsAddUserDialogOpen(false);
-    setNewUser({
-      name: "",
-      email: "",
-      role: "auditor",
-      password: "",
-    });
+  // Filter users based on search
+  const filteredUsers = users.filter(user => 
+    user.email.toLowerCase().includes(searchUser.toLowerCase()) ||
+    (user.user_metadata?.name || "").toLowerCase().includes(searchUser.toLowerCase())
+  );
+
+  const handleAddUser = async () => {
+    try {
+      if (!newUser.email || !newUser.password) {
+        toast({
+          title: "Error",
+          description: "Email dan password harus diisi",
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: newUser.email,
+        password: newUser.password,
+        user_metadata: {
+          name: newUser.name,
+          role: newUser.role
+        },
+        email_confirm: true
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Pengguna Ditambahkan",
+        description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
+      });
+
+      // Refresh users list
+      const { data: userData } = await supabase.auth.admin.listUsers();
+      setUsers(userData?.users || []);
+      
+      setIsAddUserDialogOpen(false);
+      setNewUser({
+        name: "",
+        email: "",
+        role: "auditor",
+        password: "",
+      });
+    } catch (error: any) {
+      console.error("Error adding user:", error);
+      toast({
+        title: "Error",
+        description: `Gagal menambahkan pengguna: ${error.message}`
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Pengguna Dihapus",
+        description: "Pengguna berhasil dihapus"
+      });
+
+      // Refresh users list
+      const { data: userData } = await supabase.auth.admin.listUsers();
+      setUsers(userData?.users || []);
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: `Gagal menghapus pengguna: ${error.message}`
+      });
+    }
   };
 
   const handleAddQuestion = async () => {
@@ -281,7 +335,7 @@ export default function AdminDashboard() {
       setQuestions([...questions, data[0]]);
       
       toast({
-        title: "Question Added",
+        title: "Pertanyaan Ditambahkan",
         description: "Pertanyaan audit baru berhasil ditambahkan",
       });
       
@@ -327,7 +381,7 @@ export default function AdminDashboard() {
       setQuestions(questions.map(q => q.id === editQuestion.id ? data[0] : q));
       
       toast({
-        title: "Question Updated",
+        title: "Pertanyaan Diperbarui",
         description: "Pertanyaan audit berhasil diperbarui",
       });
       
@@ -355,7 +409,7 @@ export default function AdminDashboard() {
       setQuestions(questions.filter(q => q.id !== id));
       
       toast({
-        title: "Question Deleted",
+        title: "Pertanyaan Dihapus",
         description: "Pertanyaan audit berhasil dihapus",
       });
     } catch (error) {
@@ -393,32 +447,32 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">{t("admin.title")}</h1>
+      <h1 className="text-3xl font-bold mb-6">Dasbor Admin</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         {/* Overview Card */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Overview</CardTitle>
-            <CardDescription>Audit platform statistics</CardDescription>
+            <CardTitle>Ringkasan</CardTitle>
+            <CardDescription>Statistik platform audit</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Users</span>
-                <span className="text-2xl font-bold">{mockUsers.length}</span>
+                <span className="text-sm text-muted-foreground">Pengguna</span>
+                <span className="text-2xl font-bold">{users.length}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Questions</span>
+                <span className="text-sm text-muted-foreground">Pertanyaan</span>
                 <span className="text-2xl font-bold">{questions.length}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Domains</span>
+                <span className="text-sm text-muted-foreground">Domain</span>
                 <span className="text-2xl font-bold">{domainStructure.length}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Active Questions</span>
-                <span className="text-2xl font-bold">{questions.filter(q => q.enabled).length}</span>
+                <span className="text-sm text-muted-foreground">Audit</span>
+                <span className="text-2xl font-bold">{audits.length}</span>
               </div>
             </div>
           </CardContent>
@@ -427,28 +481,28 @@ export default function AdminDashboard() {
         {/* Quick Actions */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common admin tasks</CardDescription>
+            <CardTitle>Tindakan Cepat</CardTitle>
+            <CardDescription>Tugas admin umum</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="w-full justify-start" variant="outline">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add New User
+                  Tambah Pengguna Baru
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Add New User</DialogTitle>
+                  <DialogTitle>Tambah Pengguna Baru</DialogTitle>
                   <DialogDescription>
-                    Create a new user account on the COBAIN platform.
+                    Buat akun pengguna baru pada platform COBAIN.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">
-                      Name
+                      Nama
                     </Label>
                     <Input
                       id="name"
@@ -471,14 +525,14 @@ export default function AdminDashboard() {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="role" className="text-right">
-                      Role
+                      Peran
                     </Label>
                     <Select
                       value={newUser.role}
                       onValueChange={(value) => setNewUser({ ...newUser, role: value })}
                     >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder="Pilih peran" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
@@ -488,7 +542,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="password" className="text-right">
-                      Password
+                      Kata Sandi
                     </Label>
                     <Input
                       id="password"
@@ -500,7 +554,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleAddUser}>Add User</Button>
+                  <Button onClick={handleAddUser}>Tambah Pengguna</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -509,20 +563,20 @@ export default function AdminDashboard() {
               <DialogTrigger asChild>
                 <Button className="w-full justify-start" variant="outline">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add New Question
+                  Tambah Pertanyaan Baru
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[525px]">
                 <DialogHeader>
-                  <DialogTitle>Add New Audit Question</DialogTitle>
+                  <DialogTitle>Tambah Pertanyaan Audit Baru</DialogTitle>
                   <DialogDescription>
-                    Create a new question for COBIT 2019 audits.
+                    Buat pertanyaan baru untuk audit COBIT 2019.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="question-text" className="text-right">
-                      Question
+                      Pertanyaan
                     </Label>
                     <Textarea
                       id="question-text"
@@ -589,11 +643,7 @@ export default function AdminDashboard() {
 
             <Button className="w-full justify-start" variant="outline">
               <FileText className="mr-2 h-4 w-4" />
-              View Audit Reports
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <Users className="mr-2 h-4 w-4" />
-              Manage User Roles
+              Lihat Laporan Audit
             </Button>
           </CardContent>
         </Card>
@@ -601,14 +651,14 @@ export default function AdminDashboard() {
         {/* Welcome */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Welcome, {user?.name}!</CardTitle>
-            <CardDescription>Admin Dashboard</CardDescription>
+            <CardTitle>Selamat Datang, {user?.name || user?.email}!</CardTitle>
+            <CardDescription>Dasbor Admin</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                As an administrator, you can manage users, audit questions, and view reports.
-                Use the tabs below to navigate through different management sections.
+                Sebagai administrator, Anda dapat mengelola pengguna, pertanyaan audit, dan melihat laporan.
+                Gunakan tab di bawah ini untuk menavigasi melalui berbagai bagian manajemen.
               </p>
               <div className="flex justify-center">
                 <img 
@@ -633,21 +683,25 @@ export default function AdminDashboard() {
             <FileText className="mr-2 h-4 w-4" />
             Pertanyaan Audit
           </TabsTrigger>
+          <TabsTrigger value="reports">
+            <FileOutput className="mr-2 h-4 w-4" />
+            Laporan Audit
+          </TabsTrigger>
         </TabsList>
         
         {/* Users Tab */}
         <TabsContent value="users">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>Manage users and their roles</CardDescription>
+              <CardTitle>Manajemen Pengguna</CardTitle>
+              <CardDescription>Kelola pengguna dan peran mereka</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex justify-between items-center mb-4">
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search users..."
+                    placeholder="Cari pengguna..."
                     className="pl-8"
                     value={searchUser}
                     onChange={(e) => setSearchUser(e.target.value)}
@@ -657,61 +711,81 @@ export default function AdminDashboard() {
                   <DialogTrigger asChild>
                     <Button>
                       <Plus className="mr-2 h-4 w-4" />
-                      Add User
+                      Tambah Pengguna
                     </Button>
                   </DialogTrigger>
                 </Dialog>
               </div>
               
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.id}</TableCell>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell className="capitalize">{user.role}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            {user.status === "active" ? (
-                              <>
-                                <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                Active
-                              </>
-                            ) : (
-                              <>
-                                <CircleX className="mr-2 h-4 w-4 text-red-500" />
-                                Inactive
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button variant="ghost" size="icon">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon">
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+              {loadingUsers ? (
+                <div className="text-center py-8">
+                  <p>Memuat data pengguna...</p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Nama</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Peran</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Tindakan</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
+                          <TableCell>{user.user_metadata?.name || "-"}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell className="capitalize">{user.user_metadata?.role || "auditor"}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              {!user.banned_until ? (
+                                <>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                  Aktif
+                                </>
+                              ) : (
+                                <>
+                                  <CircleX className="mr-2 h-4 w-4 text-red-500" />
+                                  Nonaktif
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => {
+                                  /* Edit functionality would be implemented here */
+                                  toast({
+                                    title: "Info",
+                                    description: "Fitur edit pengguna akan segera hadir"
+                                  });
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => handleDeleteUser(user.id)}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -735,7 +809,7 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="Semua Domain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all-domains">Semua Domain</SelectItem>
+                        <SelectItem value="">Semua Domain</SelectItem>
                         {domainStructure.map(domain => (
                           <SelectItem key={domain.id} value={domain.id}>
                             {domain.id} - {domain.name}
@@ -753,7 +827,7 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="Semua Subdomain" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all-subdomains">Semua Subdomain</SelectItem>
+                        <SelectItem value="">Semua Subdomain</SelectItem>
                         {selectedDomain && getAvailableSubdomains(selectedDomain).map(subdomain => (
                           <SelectItem key={subdomain.id} value={subdomain.id}>
                             {subdomain.id} - {subdomain.name}
@@ -781,79 +855,6 @@ export default function AdminDashboard() {
                           Tambah Pertanyaan
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-[525px]">
-                        <DialogHeader>
-                          <DialogTitle>Tambah Pertanyaan Audit Baru</DialogTitle>
-                          <DialogDescription>
-                            Buat pertanyaan baru untuk audit COBIT 2019.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="question-text" className="text-right">
-                              Pertanyaan
-                            </Label>
-                            <Textarea
-                              id="question-text"
-                              value={newQuestion.text}
-                              onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
-                              className="col-span-3"
-                              rows={3}
-                              placeholder="Masukkan pertanyaan audit"
-                            />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="domain" className="text-right">
-                              Domain
-                            </Label>
-                            <Select
-                              value={newQuestion.domain_id}
-                              onValueChange={(value) => {
-                                setNewQuestion({ 
-                                  ...newQuestion, 
-                                  domain_id: value,
-                                  subdomain_id: "" // Reset subdomain when domain changes
-                                });
-                              }}
-                            >
-                              <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Pilih domain" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {domainStructure.map(domain => (
-                                  <SelectItem key={domain.id} value={domain.id}>
-                                    {domain.id} - {domain.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="subdomain" className="text-right">
-                              Subdomain
-                            </Label>
-                            <Select
-                              value={newQuestion.subdomain_id}
-                              onValueChange={(value) => setNewQuestion({ ...newQuestion, subdomain_id: value })}
-                              disabled={!newQuestion.domain_id}
-                            >
-                              <SelectTrigger className="col-span-3">
-                                <SelectValue placeholder="Pilih subdomain" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {newQuestion.domain_id && getAvailableSubdomains(newQuestion.domain_id).map(subdomain => (
-                                  <SelectItem key={subdomain.id} value={subdomain.id}>
-                                    {subdomain.id} - {subdomain.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleAddQuestion}>Tambah Pertanyaan</Button>
-                        </DialogFooter>
-                      </DialogContent>
                     </Dialog>
                   </div>
                 </div>
@@ -986,6 +987,99 @@ export default function AdminDashboard() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Reports Tab */}
+        <TabsContent value="reports">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>Laporan Audit</CardTitle>
+              <CardDescription>Lihat dan ekspor laporan hasil audit</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col space-y-4">
+                <div className="flex justify-between items-center">
+                  <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Cari laporan audit..."
+                      className="pl-8"
+                    />
+                  </div>
+                </div>
+                
+                {loadingAudits ? (
+                  <div className="text-center py-8">
+                    <p>Memuat data audit...</p>
+                  </div>
+                ) : audits.length > 0 ? (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Judul</TableHead>
+                          <TableHead>Organisasi</TableHead>
+                          <TableHead>Tanggal Audit</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Auditor</TableHead>
+                          <TableHead className="text-right">Tindakan</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {audits.map((audit) => (
+                          <TableRow key={audit.id}>
+                            <TableCell className="font-medium">{audit.title}</TableCell>
+                            <TableCell>{audit.organization}</TableCell>
+                            <TableCell>{new Date(audit.audit_date).toLocaleDateString('id-ID')}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {audit.status === "completed" ? (
+                                  <>
+                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                    Selesai
+                                  </>
+                                ) : audit.status === "in_progress" ? (
+                                  <>
+                                    <CircleX className="mr-2 h-4 w-4 text-yellow-500" />
+                                    Dalam Proses
+                                  </>
+                                ) : (
+                                  <>
+                                    <CircleX className="mr-2 h-4 w-4 text-gray-500" />
+                                    {audit.status}
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{audit.user?.email || '-'}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button variant="outline" size="sm">
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Lihat
+                                </Button>
+                                <PDFReport 
+                                  auditId={audit.id} 
+                                  size="sm"
+                                  label="Ekspor PDF"
+                                  showIcon={true}
+                                  variant="outline"
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p>Tidak ada data audit yang tersedia.</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
