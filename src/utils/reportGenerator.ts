@@ -7,13 +7,13 @@ import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
 // Register all chart.js components
 Chart.register(...registerables);
 
-// Domain and subdomain name mappings
+// Domain and subdomain name mappings with Indonesian translations
 const domainNames: Record<string, string> = {
-  "EDM": "Evaluate, Direct and Monitor",
-  "APO": "Align, Plan and Organize",
-  "BAI": "Build, Acquire and Implement",
-  "DSS": "Deliver, Service and Support",
-  "MEA": "Monitor, Evaluate and Assess"
+  "EDM": "Evaluasi, Arahkan dan Pantau",
+  "APO": "Selaraskan, Rencanakan dan Organisasikan",
+  "BAI": "Bangun, Peroleh dan Implementasikan",
+  "DSS": "Kirim, Layani dan Dukung",
+  "MEA": "Pantau, Evaluasi dan Nilai"
 };
 
 const subdomainNames: Record<string, string> = {
@@ -85,9 +85,16 @@ interface DomainMaturityData {
 interface Recommendation {
   domain: string;
   description: string;
-  priority: 'High' | 'Medium' | 'Low';
+  priority: 'Tinggi' | 'Sedang' | 'Rendah';
   impact: string;
 }
+
+// Colors for charts
+const chartColors = {
+  currentLevel: 'rgba(99, 102, 241, 0.7)',
+  targetLevel: 'rgba(244, 114, 182, 0.7)',
+  gap: 'rgba(234, 179, 8, 0.5)'
+};
 
 export const generateAuditReport = async (auditId: string) => {
   try {
@@ -99,7 +106,7 @@ export const generateAuditReport = async (auditId: string) => {
       .single();
 
     if (auditError) throw auditError;
-    if (!auditData) throw new Error("Audit data not found");
+    if (!auditData) throw new Error("Data audit tidak ditemukan");
 
     // Fetch all related audit questions and answers
     const { data: answers, error: answersError } = await supabase
@@ -117,7 +124,7 @@ export const generateAuditReport = async (auditId: string) => {
       .eq("audit_id", auditId);
 
     if (answersError) throw answersError;
-    if (!answers || answers.length === 0) throw new Error("No audit answers found");
+    if (!answers || answers.length === 0) throw new Error("Tidak ada jawaban audit yang ditemukan");
 
     // Process data for visualization
     const auditResults: AuditResult[] = answers.map((answer) => ({
@@ -146,36 +153,42 @@ export const generateAuditReport = async (auditId: string) => {
     // Add document title and header
     pdf.setFontSize(18);
     pdf.setTextColor(40, 40, 40);
-    pdf.text("COBIT 2019 Audit Report", 105, 20, {
+    pdf.text("Laporan Audit COBIT 2019", 105, 20, {
       align: "center"
     });
 
     // Add audit metadata
     pdf.setFontSize(11);
-    pdf.text(`Organization: ${auditData.organization}`, 20, 35);
-    pdf.text(`Audit Date: ${auditData.audit_date}`, 20, 40);
-    pdf.text(`Title: ${auditData.title}`, 20, 45);
-    pdf.text(`Scope: ${auditData.scope || "Not specified"}`, 20, 50);
+    pdf.text(`Organisasi: ${auditData.organization}`, 20, 35);
+    pdf.text(`Tanggal Audit: ${auditData.audit_date}`, 20, 40);
+    pdf.text(`Judul: ${auditData.title}`, 20, 45);
+    pdf.text(`Lingkup: ${auditData.scope || "Tidak ditentukan"}`, 20, 50);
 
     // Add Executive Summary
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Executive Summary", 20, 60);
+    pdf.text("Ringkasan Eksekutif", 20, 60);
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
     const summary = generateExecutiveSummary(domainsData);
     const summaryLines = pdf.splitTextToSize(summary, 170);
     pdf.text(summaryLines, 20, 70);
 
-    // Add simple text-based report instead of charts to avoid errors
-    pdf.setFontSize(14);
-    pdf.setTextColor(30, 30, 30);
-    pdf.text("Maturity Assessment Results", 105, 95, {
-      align: "center"
-    });
-
-    // Add text-based maturity table instead of chart
-    addMaturityTable(pdf, domainsData, 20, 105);
+    // Create radar chart for maturity levels
+    const radarChartCanvas = document.createElement('canvas');
+    radarChartCanvas.width = 500;
+    radarChartCanvas.height = 300;
+    radarChartCanvas.style.display = 'none';
+    document.body.appendChild(radarChartCanvas);
+    
+    // Generate radar chart
+    createRadarChart(radarChartCanvas, domainsData);
+    
+    // Add chart to PDF
+    pdf.addImage(radarChartCanvas.toDataURL(), 'PNG', 30, 95, 150, 90);
+    
+    // Remove canvas after generating image
+    document.body.removeChild(radarChartCanvas);
 
     // Add a page break
     pdf.addPage();
@@ -183,18 +196,34 @@ export const generateAuditReport = async (auditId: string) => {
     // Add gap analysis
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Gap Analysis", 105, 20, {
+    pdf.text("Analisis Kesenjangan", 105, 20, {
       align: "center"
     });
 
-    // Add text-based gap analysis instead of radar chart
-    addGapAnalysisTable(pdf, domainsData, 20, 30);
+    // Create bar chart for gap analysis
+    const barChartCanvas = document.createElement('canvas');
+    barChartCanvas.width = 500;
+    barChartCanvas.height = 300;
+    barChartCanvas.style.display = 'none';
+    document.body.appendChild(barChartCanvas);
+    
+    // Generate bar chart
+    createBarChart(barChartCanvas, domainsData);
+    
+    // Add chart to PDF
+    pdf.addImage(barChartCanvas.toDataURL(), 'PNG', 30, 30, 150, 90);
+    
+    // Remove canvas after generating image
+    document.body.removeChild(barChartCanvas);
+    
+    // Add text-based gap analysis
+    addGapAnalysisTable(pdf, domainsData, 20, 130);
 
     // Add detailed results table
     pdf.addPage();
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Detailed Assessment Results", 105, 20, {
+    pdf.text("Hasil Penilaian Terperinci", 105, 20, {
       align: "center"
     });
 
@@ -205,7 +234,7 @@ export const generateAuditReport = async (auditId: string) => {
     pdf.addPage();
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Recommendations", 105, 20, {
+    pdf.text("Rekomendasi", 105, 20, {
       align: "center"
     });
 
@@ -215,11 +244,11 @@ export const generateAuditReport = async (auditId: string) => {
     pdf.addPage();
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Prioritization Heat Map", 105, 20, {
+    pdf.text("Peta Panas Prioritas", 105, 20, {
       align: "center"
     });
 
-    // Add text-based priority map instead of chart
+    // Add text-based priority map
     addPriorityTable(pdf, domainsData, 20, 30);
 
     // Add footer with page numbers
@@ -228,21 +257,21 @@ export const generateAuditReport = async (auditId: string) => {
       pdf.setPage(i);
       pdf.setFontSize(8);
       pdf.setTextColor(100, 100, 100);
-      pdf.text(`Page ${i} of ${pageCount}`, 105, 290, {
+      pdf.text(`Halaman ${i} dari ${pageCount}`, 105, 290, {
         align: "center"
       });
-      pdf.text(`COBIT 2019 Assessment Report - Generated on ${new Date().toLocaleDateString()}`, 105, 295, {
+      pdf.text(`Laporan Penilaian COBIT 2019 - Dihasilkan pada ${new Date().toLocaleDateString()}`, 105, 295, {
         align: "center"
       });
     }
 
     // Save the PDF
-    pdf.save(`COBIT-Audit-Report-${auditData.organization}-${auditData.audit_date}.pdf`);
-    console.log("PDF generated successfully");
+    pdf.save(`Laporan-Audit-COBIT-${auditData.organization}-${auditData.audit_date}.pdf`);
+    console.log("PDF berhasil dihasilkan");
     
     return true;
   } catch (error) {
-    console.error("Error generating report:", error);
+    console.error("Error menghasilkan laporan:", error);
     throw error;
   }
 };
@@ -272,7 +301,7 @@ const calculateDomainMaturityLevels = (results: AuditResult[]): DomainMaturityDa
 };
 
 const generateExecutiveSummary = (maturityData: DomainMaturityData[]): string => {
-  if (!maturityData.length) return "No maturity data available for this audit.";
+  if (!maturityData.length) return "Tidak ada data kematangan yang tersedia untuk audit ini.";
   
   const avgMaturity = maturityData.reduce((sum, domain) => sum + domain.currentLevel, 0) / maturityData.length;
 
@@ -289,32 +318,32 @@ const generateExecutiveSummary = (maturityData: DomainMaturityData[]): string =>
     }
   });
 
-  return `This report presents the assessment results of a COBIT 2019 audit conducted for ${maturityData.length} domains. \nThe overall organizational IT maturity level is ${avgMaturity.toFixed(2)} out of 5. \nThe highest performing domain is ${highestDomain.domain} (${highestDomain.domainName}) at level ${highestDomain.currentLevel}, \nwhile the lowest performing domain is ${lowestDomain.domain} (${lowestDomain.domainName}) at level ${lowestDomain.currentLevel}. \nThis assessment identifies gaps between current and target maturity levels, and provides targeted recommendations to improve IT governance and management practices.`;
+  return `Laporan ini menyajikan hasil penilaian audit COBIT 2019 yang dilakukan untuk ${maturityData.length} domain. \nTingkat kematangan TI organisasi secara keseluruhan adalah ${avgMaturity.toFixed(2)} dari 5. \nDomain dengan kinerja tertinggi adalah ${highestDomain.domain} (${highestDomain.domainName}) pada level ${highestDomain.currentLevel}, \nsedangkan domain dengan kinerja terendah adalah ${lowestDomain.domain} (${lowestDomain.domainName}) pada level ${lowestDomain.currentLevel}. \nPenilaian ini mengidentifikasi kesenjangan antara tingkat kematangan saat ini dan target, serta memberikan rekomendasi yang ditargetkan untuk meningkatkan praktik tata kelola dan manajemen TI.`;
 };
 
 const generateRecommendations = (maturityData: DomainMaturityData[]): Recommendation[] => {
   return maturityData.map((domain) => {
     const gap = domain.targetLevel - domain.currentLevel;
-    let priority: 'High' | 'Medium' | 'Low' = 'Low';
+    let priority: 'Tinggi' | 'Sedang' | 'Rendah' = 'Rendah';
     let description = '';
     let impact = '';
 
     if (gap > 3) {
-      priority = 'High';
-      description = `Critical improvement needed in ${domain.domain} (${domain.domainName}). Establish basic governance processes and documentation.`;
-      impact = 'Significant improvement in organizational IT governance and risk management.';
+      priority = 'Tinggi';
+      description = `Perbaikan kritis diperlukan di ${domain.domain} (${domain.domainName}). Tetapkan proses tata kelola dasar dan dokumentasi.`;
+      impact = 'Peningkatan signifikan dalam tata kelola TI organisasi dan manajemen risiko.';
     } else if (gap > 2) {
-      priority = 'High';
-      description = `Major improvement required in ${domain.domain} (${domain.domainName}). Formalize existing processes and implement metrics.`;
-      impact = 'Enhanced operational effectiveness and reduced IT-related incidents.';
+      priority = 'Tinggi';
+      description = `Perbaikan besar diperlukan di ${domain.domain} (${domain.domainName}). Formalkan proses yang ada dan terapkan metrik.`;
+      impact = 'Peningkatan efektivitas operasional dan pengurangan insiden terkait TI.';
     } else if (gap > 1) {
-      priority = 'Medium';
-      description = `Moderate enhancement needed in ${domain.domain} (${domain.domainName}). Focus on standardizing processes and measuring outcomes.`;
-      impact = 'Improved consistency in IT operations and better alignment with business objectives.';
+      priority = 'Sedang';
+      description = `Peningkatan moderat diperlukan di ${domain.domain} (${domain.domainName}). Fokus pada standardisasi proses dan pengukuran hasil.`;
+      impact = 'Konsistensi yang lebih baik dalam operasi TI dan keselarasan yang lebih baik dengan tujuan bisnis.';
     } else {
-      priority = 'Low';
-      description = `Minor refinement recommended for ${domain.domain} (${domain.domainName}). Optimize existing processes and focus on continuous improvement.`;
-      impact = 'Operational excellence and industry-leading IT governance practices.';
+      priority = 'Rendah';
+      description = `Penyempurnaan kecil direkomendasikan untuk ${domain.domain} (${domain.domainName}). Optimalkan proses yang ada dan fokus pada peningkatan berkelanjutan.`;
+      impact = 'Keunggulan operasional dan praktik tata kelola TI terdepan di industri.';
     }
 
     return {
@@ -325,15 +354,126 @@ const generateRecommendations = (maturityData: DomainMaturityData[]): Recommenda
     };
   }).sort((a, b) => {
     const priorityValues = {
-      'High': 3,
-      'Medium': 2,
-      'Low': 1
+      'Tinggi': 3,
+      'Sedang': 2,
+      'Rendah': 1
     };
     return priorityValues[b.priority] - priorityValues[a.priority];
   });
 };
 
-// Replace chart-based functions with table-based alternatives
+// Create radar chart for maturity visualization
+const createRadarChart = (canvas: HTMLCanvasElement, data: DomainMaturityData[]) => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  
+  const labels = data.map(d => d.domain);
+  const currentLevels = data.map(d => d.currentLevel);
+  const targetLevels = data.map(d => d.targetLevel);
+  
+  new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Tingkat Saat Ini',
+          data: currentLevels,
+          backgroundColor: chartColors.currentLevel,
+          borderColor: chartColors.currentLevel.replace('0.7', '1'),
+          borderWidth: 1
+        },
+        {
+          label: 'Tingkat Target',
+          data: targetLevels,
+          backgroundColor: chartColors.targetLevel,
+          borderColor: chartColors.targetLevel.replace('0.7', '1'),
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      scales: {
+        r: {
+          angleLines: {
+            display: true
+          },
+          min: 0,
+          max: 5,
+          ticks: {
+            stepSize: 1
+          },
+          pointLabels: {
+            font: {
+              size: 12
+            }
+          }
+        }
+      }
+    }
+  });
+};
+
+// Create bar chart for gap analysis
+const createBarChart = (canvas: HTMLCanvasElement, data: DomainMaturityData[]) => {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  
+  const labels = data.map(d => d.domain);
+  const currentLevels = data.map(d => d.currentLevel);
+  const targetLevels = data.map(d => d.targetLevel);
+  const gaps = data.map(d => d.targetLevel - d.currentLevel);
+  
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Tingkat Saat Ini',
+          data: currentLevels,
+          backgroundColor: chartColors.currentLevel,
+          borderColor: 'rgba(0,0,0,0.1)',
+          borderWidth: 1
+        },
+        {
+          label: 'Tingkat Target',
+          data: targetLevels,
+          backgroundColor: chartColors.targetLevel,
+          borderColor: 'rgba(0,0,0,0.1)',
+          borderWidth: 1
+        },
+        {
+          label: 'Kesenjangan',
+          data: gaps,
+          backgroundColor: chartColors.gap,
+          borderColor: 'rgba(0,0,0,0.1)',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 5,
+          title: {
+            display: true,
+            text: 'Tingkat Kematangan'
+          }
+        },
+        x: {
+          title: {
+            display: true,
+            text: 'Domain'
+          }
+        }
+      }
+    }
+  });
+};
+
 const addMaturityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: number): void => {
   const tableData = data.map(d => [
     d.domain,
@@ -345,7 +485,7 @@ const addMaturityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: 
 
   autoTable(pdf, {
     startY: y,
-    head: [["Domain", "Domain Name", "Current Level", "Target Level", "Gap"]],
+    head: [["Domain", "Nama Domain", "Tingkat Saat Ini", "Tingkat Target", "Kesenjangan"]],
     body: tableData,
     theme: 'striped',
     headStyles: { fillColor: [80, 80, 80] },
@@ -365,10 +505,10 @@ const addGapAnalysisTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, 
     const gap = d.targetLevel - d.currentLevel;
     let priority = '';
     
-    if (gap > 3) priority = 'Critical';
-    else if (gap > 2) priority = 'High';
-    else if (gap > 1) priority = 'Medium';
-    else priority = 'Low';
+    if (gap > 3) priority = 'Kritis';
+    else if (gap > 2) priority = 'Tinggi';
+    else if (gap > 1) priority = 'Sedang';
+    else priority = 'Rendah';
     
     return [
       d.domain,
@@ -382,7 +522,7 @@ const addGapAnalysisTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, 
 
   autoTable(pdf, {
     startY: y,
-    head: [["Domain", "Domain Name", "Current", "Target", "Gap", "Priority"]],
+    head: [["Domain", "Nama Domain", "Saat Ini", "Target", "Kesenjangan", "Prioritas"]],
     body: tableData,
     theme: 'striped',
     headStyles: { fillColor: [80, 80, 80] },
@@ -398,13 +538,13 @@ const addGapAnalysisTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, 
       // Color the priority cell based on value
       if (data.section === 'body' && data.column.index === 5) {
         const priority = data.cell.raw?.toString();
-        if (priority === 'Critical') {
+        if (priority === 'Kritis') {
           data.cell.styles.fillColor = [255, 99, 132];
           data.cell.styles.textColor = [255, 255, 255];
-        } else if (priority === 'High') {
+        } else if (priority === 'Tinggi') {
           data.cell.styles.fillColor = [255, 159, 64];
           data.cell.styles.textColor = [255, 255, 255];
-        } else if (priority === 'Medium') {
+        } else if (priority === 'Sedang') {
           data.cell.styles.fillColor = [255, 205, 86];
         } else {
           data.cell.styles.fillColor = [75, 192, 192];
@@ -418,14 +558,14 @@ const addGapAnalysisTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, 
   
   pdf.setFontSize(12);
   pdf.setTextColor(40, 40, 40);
-  pdf.text("Gap Analysis Summary", 20, finalY + 20);
+  pdf.text("Ringkasan Analisis Kesenjangan", 20, finalY + 20);
   pdf.setFontSize(10);
   pdf.setTextColor(60, 60, 60);
 
   // Generate gap analysis text
   const gapAnalysis = data.map((d) => {
     const gap = d.targetLevel - d.currentLevel;
-    return `${d.domain} (${d.domainName}): Current ${d.currentLevel} vs Target ${d.targetLevel} - Gap: ${gap.toFixed(2)}`;
+    return `${d.domain} (${d.domainName}): Saat ini ${d.currentLevel} vs Target ${d.targetLevel} - Kesenjangan: ${gap.toFixed(2)}`;
   });
 
   let yPosition = finalY + 30;
@@ -482,9 +622,9 @@ const addDetailedResultsTable = (pdf: jsPDF, results: AuditResult[], startY: num
         startY: yPos,
         head: [
           [
-            "Question",
-            "Maturity Level",
-            "Notes"
+            "Pertanyaan",
+            "Tingkat Kematangan",
+            "Catatan"
           ]
         ],
         body: tableData,
@@ -548,9 +688,9 @@ const addRecommendationsTable = (pdf: jsPDF, recommendations: Recommendation[], 
     head: [
       [
         "Domain",
-        "Recommendation",
-        "Priority",
-        "Expected Impact"
+        "Rekomendasi",
+        "Prioritas",
+        "Dampak yang Diharapkan"
       ]
     ],
     body: tableData,
@@ -578,10 +718,10 @@ const addRecommendationsTable = (pdf: jsPDF, recommendations: Recommendation[], 
       // Color the priority cell based on value
       if (data.section === 'body' && data.column.index === 2) {
         const priority = data.cell.raw?.toString();
-        if (priority === 'High') {
+        if (priority === 'Tinggi') {
           data.cell.styles.fillColor = [255, 100, 100];
           data.cell.styles.textColor = [255, 255, 255];
-        } else if (priority === 'Medium') {
+        } else if (priority === 'Sedang') {
           data.cell.styles.fillColor = [255, 180, 100];
           data.cell.styles.textColor = [255, 255, 255];
         } else {
@@ -606,17 +746,17 @@ const addPriorityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: 
     let color = '';
     
     if (gap > 3) {
-      priority = 'Critical';
-      color = 'Red';
+      priority = 'Kritis';
+      color = 'Merah';
     } else if (gap > 2) {
-      priority = 'High';
-      color = 'Orange';
+      priority = 'Tinggi';
+      color = 'Oranye';
     } else if (gap > 1) {
-      priority = 'Medium';
-      color = 'Yellow';
+      priority = 'Sedang';
+      color = 'Kuning';
     } else {
-      priority = 'Low';
-      color = 'Green';
+      priority = 'Rendah';
+      color = 'Hijau';
     }
     
     return [
@@ -630,7 +770,7 @@ const addPriorityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: 
 
   autoTable(pdf, {
     startY: y,
-    head: [["Domain", "Domain Name", "Gap", "Priority", "Action"]],
+    head: [["Domain", "Nama Domain", "Kesenjangan", "Prioritas", "Tindakan"]],
     body: tableData,
     theme: 'striped',
     headStyles: { fillColor: [80, 80, 80] },
@@ -645,13 +785,13 @@ const addPriorityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: 
       // Color the priority cell based on value
       if (data.section === 'body' && data.column.index === 3) {
         const priority = data.cell.raw?.toString();
-        if (priority === 'Critical') {
+        if (priority === 'Kritis') {
           data.cell.styles.fillColor = [255, 99, 132];
           data.cell.styles.textColor = [255, 255, 255];
-        } else if (priority === 'High') {
+        } else if (priority === 'Tinggi') {
           data.cell.styles.fillColor = [255, 159, 64];
           data.cell.styles.textColor = [255, 255, 255];
-        } else if (priority === 'Medium') {
+        } else if (priority === 'Sedang') {
           data.cell.styles.fillColor = [255, 205, 86];
         } else {
           data.cell.styles.fillColor = [75, 192, 192];
@@ -668,26 +808,26 @@ const addPriorityTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: 
   pdf.rect(20, finalY + 20, 10, 5, 'F');
   pdf.setTextColor(40, 40, 40);
   pdf.setFontSize(10);
-  pdf.text('Critical Gap (>3): Immediate action required', 35, finalY + 24);
+  pdf.text('Kesenjangan Kritis (>3): Tindakan segera diperlukan', 35, finalY + 24);
 
   pdf.setFillColor(255, 159, 64);
   pdf.rect(20, finalY + 30, 10, 5, 'F');
-  pdf.text('High Gap (2-3): High priority improvement needed', 35, finalY + 34);
+  pdf.text('Kesenjangan Tinggi (2-3): Peningkatan prioritas tinggi diperlukan', 35, finalY + 34);
 
   pdf.setFillColor(255, 205, 86);
   pdf.rect(20, finalY + 40, 10, 5, 'F');
-  pdf.text('Medium Gap (1-2): Moderate improvement needed', 35, finalY + 44);
+  pdf.text('Kesenjangan Sedang (1-2): Peningkatan moderat diperlukan', 35, finalY + 44);
 
   pdf.setFillColor(75, 192, 192);
   pdf.rect(20, finalY + 50, 10, 5, 'F');
-  pdf.text('Low Gap (<1): Fine-tuning and optimization', 35, finalY + 54);
+  pdf.text('Kesenjangan Rendah (<1): Penyetelan dan optimasi', 35, finalY + 54);
 
   // Add explanation text
   pdf.setFontSize(11);
   pdf.setTextColor(60, 60, 60);
-  pdf.text("Priority Explanation:", 20, finalY + 70);
+  pdf.text("Penjelasan Prioritas:", 20, finalY + 70);
   pdf.setFontSize(10);
-  const priorityExplanation = "This table identifies priority areas for improvement based on the gap between current and target maturity levels. Areas with larger gaps should be prioritized for remediation efforts. Critical and High gap areas require immediate attention and resource allocation.";
+  const priorityExplanation = "Tabel ini mengidentifikasi area prioritas untuk perbaikan berdasarkan kesenjangan antara tingkat kematangan saat ini dan target. Area dengan kesenjangan lebih besar harus diprioritaskan untuk upaya perbaikan. Area dengan kesenjangan Kritis dan Tinggi memerlukan perhatian segera dan alokasi sumber daya.";
   const explanationLines = pdf.splitTextToSize(priorityExplanation, 170);
   pdf.text(explanationLines, 20, finalY + 80);
 };
