@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,28 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MaturityLevelInfo } from "@/components/MaturityLevelInfo";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Define maturity level descriptions
 const maturityLevels = [
@@ -45,6 +63,7 @@ interface Domain {
   id: string;
   name: string;
   subdomains: Subdomain[];
+  selected?: boolean; // Track if domain is selected for audit
 }
 
 interface Subdomain {
@@ -131,6 +150,11 @@ export default function AuditChecklist() {
   const [answers, setAnswers] = useState<Record<string, { maturity_level: number; notes: string | null }>>({});
   const [missingAnswers, setMissingAnswers] = useState<string[]>([]);
   const [remainingDomains, setRemainingDomains] = useState<number>(0);
+  
+  // New states for domain selection
+  const [showDomainSelector, setShowDomainSelector] = useState(false);
+  const [selectedDomains, setSelectedDomains] = useState<Record<string, boolean>>({});
+  const [filteredDomains, setFilteredDomains] = useState<Domain[]>([]);
 
   // Fetch audit data and questions from Supabase
   useEffect(() => {
@@ -213,7 +237,8 @@ export default function AuditChecklist() {
             domainMap[domainId] = {
               id: domainId,
               name: domainNames[domainId] || domainId,
-              subdomains: []
+              subdomains: [],
+              selected: true // Default all domains to selected
             };
           }
           
@@ -241,6 +266,14 @@ export default function AuditChecklist() {
         const domainsArray = Object.values(domainMap);
         setDomains(domainsArray);
         
+        // Initialize selected domains
+        const selectedDomainsMap: Record<string, boolean> = {};
+        domainsArray.forEach(domain => {
+          selectedDomainsMap[domain.id] = true; // All domains selected by default
+        });
+        setSelectedDomains(selectedDomainsMap);
+        setFilteredDomains(domainsArray); // Initially all domains are filtered
+        
         if (domainsArray.length > 0) {
           setCurrentDomain(domainsArray[0].id);
           if (domainsArray[0].subdomains.length > 0) {
@@ -260,6 +293,43 @@ export default function AuditChecklist() {
           // Calculate remaining domains
           calculateRemainingDomains(domainsArray, answersMap);
         }
+        
+        // Check if domain selection has been made before
+        const { data: auditDomainsData } = await supabase
+          .from("audit_domains")
+          .select("*")
+          .eq("audit_id", auditId);
+          
+        if (auditDomainsData && auditDomainsData.length > 0) {
+          // Use stored domain selections
+          const storedSelectedDomains: Record<string, boolean> = {};
+          auditDomainsData.forEach((domainData: any) => {
+            storedSelectedDomains[domainData.domain_id] = domainData.selected;
+          });
+          setSelectedDomains(storedSelectedDomains);
+          
+          // Filter domains based on stored selections
+          const filteredDomainsArray = domainsArray.filter(domain => 
+            storedSelectedDomains[domain.id]
+          );
+          setFilteredDomains(filteredDomainsArray);
+          
+          if (filteredDomainsArray.length > 0) {
+            setCurrentDomain(filteredDomainsArray[0].id);
+            if (filteredDomainsArray[0].subdomains.length > 0) {
+              setQuestions(filteredDomainsArray[0].subdomains[0].questions);
+            }
+          }
+          
+          // Show domain selector if this is a new audit (no answers yet)
+          if (!answersData || answersData.length === 0) {
+            setShowDomainSelector(true);
+          }
+        } else {
+          // Show domain selector if no selections have been stored
+          setShowDomainSelector(true);
+        }
+        
       } catch (error) {
         console.error("Error in audit checklist:", error);
         toast({
@@ -292,15 +362,15 @@ export default function AuditChecklist() {
 
   // Update questions when domain or subdomain changes
   useEffect(() => {
-    if (domains.length > 0 && currentDomain) {
-      const domain = domains.find(d => d.id === currentDomain);
+    if (filteredDomains.length > 0 && currentDomain) {
+      const domain = filteredDomains.find(d => d.id === currentDomain);
       if (domain && domain.subdomains.length > 0 && domain.subdomains[currentSubdomainIndex]) {
         setQuestions(domain.subdomains[currentSubdomainIndex].questions);
         // Clear missing answers highlight when changing domain/subdomain
         setMissingAnswers([]);
       }
     }
-  }, [currentDomain, currentSubdomainIndex, domains]);
+  }, [currentDomain, currentSubdomainIndex, filteredDomains]);
 
   const handleMaturityLevelChange = async (questionId: string, value: string) => {
     const maturityLevel = parseInt(value);
@@ -325,7 +395,7 @@ export default function AuditChecklist() {
     
     // Update progress
     if (domains.length > 0) {
-      const totalQuestions = domains.flatMap(domain => 
+      const totalQuestions = filteredDomains.flatMap(domain => 
         domain.subdomains.flatMap(subdomain => subdomain.questions)
       ).length;
       
@@ -333,7 +403,7 @@ export default function AuditChecklist() {
       setProgress((answeredQuestions / totalQuestions) * 100);
       
       // Recalculate remaining domains
-      calculateRemainingDomains(domains, newAnswers);
+      calculateRemainingDomains(filteredDomains, newAnswers);
     }
   };
 
@@ -428,16 +498,16 @@ export default function AuditChecklist() {
       return;
     }
     
-    const currentDomainObj = domains.find(d => d.id === currentDomain);
+    const currentDomainObj = filteredDomains.find(d => d.id === currentDomain);
     if (!currentDomainObj) return;
     
     if (currentSubdomainIndex < currentDomainObj.subdomains.length - 1) {
       setCurrentSubdomainIndex(currentSubdomainIndex + 1);
     } else {
       // Move to the next domain
-      const currentDomainIndex = domains.findIndex(d => d.id === currentDomain);
-      if (currentDomainIndex < domains.length - 1) {
-        setCurrentDomain(domains[currentDomainIndex + 1].id);
+      const currentDomainIndex = filteredDomains.findIndex(d => d.id === currentDomain);
+      if (currentDomainIndex < filteredDomains.length - 1) {
+        setCurrentDomain(filteredDomains[currentDomainIndex + 1].id);
         setCurrentSubdomainIndex(0);
       } else {
         // We've reached the end of the audit
@@ -456,12 +526,82 @@ export default function AuditChecklist() {
       setCurrentSubdomainIndex(currentSubdomainIndex - 1);
     } else {
       // Move to the previous domain
-      const currentDomainIndex = domains.findIndex(d => d.id === currentDomain);
+      const currentDomainIndex = filteredDomains.findIndex(d => d.id === currentDomain);
       if (currentDomainIndex > 0) {
-        setCurrentDomain(domains[currentDomainIndex - 1].id);
-        const prevDomain = domains[currentDomainIndex - 1];
+        setCurrentDomain(filteredDomains[currentDomainIndex - 1].id);
+        const prevDomain = filteredDomains[currentDomainIndex - 1];
         setCurrentSubdomainIndex(prevDomain.subdomains.length - 1);
       }
+    }
+  };
+  
+  // Function to toggle domain selection
+  const toggleDomainSelection = (domainId: string) => {
+    setSelectedDomains(prev => ({
+      ...prev,
+      [domainId]: !prev[domainId]
+    }));
+  };
+  
+  // Function to save domain selections
+  const saveDomainSelections = async () => {
+    if (!auditId) return;
+    
+    try {
+      setSaving(true);
+      
+      // Delete any existing domain selections
+      const { error: deleteError } = await supabase
+        .from("audit_domains")
+        .delete()
+        .eq("audit_id", auditId);
+        
+      if (deleteError) {
+        throw deleteError;
+      }
+      
+      // Insert new domain selections
+      const domainSelectionsToSave = Object.entries(selectedDomains).map(([domainId, selected]) => ({
+        audit_id: auditId,
+        domain_id: domainId,
+        selected: selected
+      }));
+      
+      const { error } = await supabase
+        .from("audit_domains")
+        .insert(domainSelectionsToSave);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update filtered domains
+      const newFilteredDomains = domains.filter(domain => selectedDomains[domain.id]);
+      setFilteredDomains(newFilteredDomains);
+      
+      // Update current domain if needed
+      if (newFilteredDomains.length > 0) {
+        if (!selectedDomains[currentDomain]) {
+          setCurrentDomain(newFilteredDomains[0].id);
+          setCurrentSubdomainIndex(0);
+        }
+      }
+      
+      // Close the domain selector
+      setShowDomainSelector(false);
+      
+      toast({
+        title: "Sukses",
+        description: "Domain audit berhasil disimpan",
+      });
+    } catch (error) {
+      console.error("Error saving domain selections:", error);
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan pilihan domain audit",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -473,16 +613,8 @@ export default function AuditChecklist() {
     );
   }
 
-  const currentDomainObj = domains.find(d => d.id === currentDomain);
+  const currentDomainObj = filteredDomains.find(d => d.id === currentDomain);
   const currentSubdomain = currentDomainObj?.subdomains[currentSubdomainIndex];
-
-  if (!currentSubdomain) {
-    return (
-      <div className="p-6 flex justify-center">
-        <p>Tidak ada pertanyaan audit yang tersedia.</p>
-      </div>
-    );
-  }
 
   // Map maturity levels to colors for visual indication
   const getMaturityColor = (level: number) => {
@@ -530,14 +662,73 @@ export default function AuditChecklist() {
                 Penilaian tingkat kematangan berdasarkan COBIT 2019
               </CardDescription>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={saveAnswers}
-              disabled={saving}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saving ? "Menyimpan..." : "Simpan Kemajuan"}
-            </Button>
+            <div className="flex gap-2">
+              <Dialog open={showDomainSelector} onOpenChange={setShowDomainSelector}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Pilih Domain
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Pilih Domain untuk Audit</DialogTitle>
+                    <DialogDescription>
+                      Pilih domain yang akan diaudit dalam penilaian ini. Domain yang tidak dipilih tidak akan ditampilkan dalam checklist.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="py-4 space-y-4">
+                    {domains.map((domain) => (
+                      <div key={domain.id} className="flex items-start space-x-3">
+                        <Checkbox 
+                          id={`domain-${domain.id}`}
+                          checked={selectedDomains[domain.id] || false}
+                          onCheckedChange={() => toggleDomainSelection(domain.id)}
+                        />
+                        <div>
+                          <label 
+                            htmlFor={`domain-${domain.id}`}
+                            className="font-medium text-sm cursor-pointer"
+                          >
+                            {domain.id} - {domain.name}
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            {domain.subdomains.length} subdomain, {domain.subdomains.reduce((count, sd) => count + sd.questions.length, 0)} pertanyaan
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowDomainSelector(false)}
+                    >
+                      Batal
+                    </Button>
+                    <Button 
+                      type="button"
+                      onClick={saveDomainSelections}
+                      disabled={saving || Object.values(selectedDomains).filter(Boolean).length === 0}
+                    >
+                      {saving ? "Menyimpan..." : "Simpan Pilihan"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              <Button 
+                variant="outline" 
+                onClick={saveAnswers}
+                disabled={saving}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {saving ? "Menyimpan..." : "Simpan Kemajuan"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -550,103 +741,150 @@ export default function AuditChecklist() {
             <Progress value={progress} className="h-2" />
           </div>
 
-          <div className="mb-6">
-            <h3 className="text-lg font-medium mb-2">
-              {currentDomain} - {currentDomainObj?.name}
-            </h3>
-            <h4 className="text-md font-medium text-muted-foreground mb-4">
-              {currentSubdomain.id} - {currentSubdomain.name}
-            </h4>
-          </div>
-
-          <div className="space-y-8">
-            {currentSubdomain.questions.map((question) => (
-              <div 
-                key={question.id} 
-                className={`bg-white border p-6 rounded-lg shadow-sm ${missingAnswers.includes(question.id) ? 'border-red-500' : 'border-gray-200'}`}
+          {!currentDomainObj || !currentSubdomain ? (
+            <div className="text-center py-8">
+              <p className="text-lg text-muted-foreground">
+                Tidak ada domain yang dipilih untuk audit. Silakan pilih minimal satu domain.
+              </p>
+              <Button 
+                className="mt-4" 
+                onClick={() => setShowDomainSelector(true)}
               >
-                <div>
-                  <h5 className="font-medium text-lg mb-6">
-                    <span className="inline-flex items-center justify-center bg-primary text-white rounded-full w-6 h-6 text-sm mr-2">
-                      {question.index}
-                    </span>
-                    {question.text}
-                  </h5>
-                  
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <label className="text-sm font-medium mb-3 block">
-                        Tingkat Kematangan <span className="text-red-500">*</span>
-                      </label>
-                      
-                      <div className="flex flex-col space-y-4">
-                        <ToggleGroup 
-                          type="single" 
-                          value={String(question.answer?.maturity_level ?? "")}
-                          onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
-                          className="flex flex-wrap"
-                        >
-                          {maturityLevels.map((level) => (
-                            <ToggleGroupItem 
-                              key={level.value} 
-                              value={String(level.value)}
-                              variant={getMaturityColor(level.value)}
-                              className="flex-1 py-3 font-medium text-sm"
-                              aria-label={level.label}
-                            >
-                              {level.label}
-                            </ToggleGroupItem>
-                          ))}
-                        </ToggleGroup>
-                        
-                        {missingAnswers.includes(question.id) && (
-                          <p className="text-xs text-red-500 mt-1">
-                            Tingkat kematangan wajib diisi
-                          </p>
-                        )}
-                        
-                        {question.answer?.maturity_level !== undefined && (
-                          <p className="text-sm px-3 py-2 bg-gray-50 rounded border border-gray-100">
-                            <span className="font-medium">{maturityLevels.find(l => l.value === question.answer?.maturity_level)?.label}:</span>{" "}
-                            {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3">
-                      <label className="text-sm font-medium mb-2 block">
-                        Catatan (Opsional)
-                      </label>
-                      <Textarea
-                        placeholder="Masukkan catatan atau bukti pendukung..."
-                        value={question.answer?.notes || ""}
-                        onChange={(e) => handleNotesChange(question.id, e.target.value)}
-                        className="h-24 border-gray-200 focus:border-gray-300"
-                      />
-                    </div>
+                <Filter className="mr-2 h-4 w-4" />
+                Pilih Domain
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">
+                      {currentDomain} - {currentDomainObj?.name}
+                    </h3>
+                    <h4 className="text-md font-medium text-muted-foreground mb-4">
+                      {currentSubdomain.id} - {currentSubdomain.name}
+                    </h4>
                   </div>
+                  
+                  <Select
+                    value={`${currentDomain}-${currentSubdomainIndex}`}
+                    onValueChange={(value) => {
+                      const [domainId, subdomainIdx] = value.split('-');
+                      setCurrentDomain(domainId);
+                      setCurrentSubdomainIndex(parseInt(subdomainIdx));
+                    }}
+                  >
+                    <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder="Pilih domain/subdomain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredDomains.map((domain) => (
+                        <React.Fragment key={domain.id}>
+                          {domain.subdomains.map((subdomain, index) => (
+                            <SelectItem key={`${domain.id}-${index}`} value={`${domain.id}-${index}`}>
+                              {domain.id} - {subdomain.id}: {subdomain.name}
+                            </SelectItem>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-8">
+                {currentSubdomain.questions.map((question) => (
+                  <div 
+                    key={question.id} 
+                    className={`bg-white border p-6 rounded-lg shadow-sm ${missingAnswers.includes(question.id) ? 'border-red-500' : 'border-gray-200'}`}
+                  >
+                    <div>
+                      <h5 className="font-medium text-lg mb-6">
+                        <span className="inline-flex items-center justify-center bg-primary text-white rounded-full w-6 h-6 text-sm mr-2">
+                          {question.index}
+                        </span>
+                        {question.text}
+                      </h5>
+                      
+                      <div className="flex flex-col gap-6">
+                        <div>
+                          <label className="text-sm font-medium mb-3 block">
+                            Tingkat Kematangan <span className="text-red-500">*</span>
+                          </label>
+                          
+                          <div className="flex flex-col space-y-4">
+                            <ToggleGroup 
+                              type="single" 
+                              value={String(question.answer?.maturity_level ?? "")}
+                              onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
+                              className="flex flex-wrap"
+                            >
+                              {maturityLevels.map((level) => (
+                                <ToggleGroupItem 
+                                  key={level.value} 
+                                  value={String(level.value)}
+                                  variant={getMaturityColor(level.value)}
+                                  className="flex-1 py-3 font-medium text-sm"
+                                  aria-label={level.label}
+                                >
+                                  {level.label}
+                                </ToggleGroupItem>
+                              ))}
+                            </ToggleGroup>
+                            
+                            {missingAnswers.includes(question.id) && (
+                              <p className="text-xs text-red-500 mt-1">
+                                Tingkat kematangan wajib diisi
+                              </p>
+                            )}
+                            
+                            {question.answer?.maturity_level !== undefined && (
+                              <p className="text-sm px-3 py-2 bg-gray-50 rounded border border-gray-100">
+                                <span className="font-medium">{maturityLevels.find(l => l.value === question.answer?.maturity_level)?.label}:</span>{" "}
+                                {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3">
+                          <label className="text-sm font-medium mb-2 block">
+                            Catatan (Opsional)
+                          </label>
+                          <Textarea
+                            placeholder="Masukkan catatan atau bukti pendukung..."
+                            value={question.answer?.notes || ""}
+                            onChange={(e) => handleNotesChange(question.id, e.target.value)}
+                            className="h-24 border-gray-200 focus:border-gray-300"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </CardContent>
 
-        <CardFooter className="flex justify-between pt-6 border-t mt-6">
-          <Button 
-            variant="outline" 
-            onClick={goToPrevSubdomain}
-            disabled={currentDomain === domains[0]?.id && currentSubdomainIndex === 0}
-          >
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Sebelumnya
-          </Button>
+        {(currentDomainObj && currentSubdomain) && (
+          <CardFooter className="flex justify-between pt-6 border-t mt-6">
+            <Button 
+              variant="outline" 
+              onClick={goToPrevSubdomain}
+              disabled={currentDomain === filteredDomains[0]?.id && currentSubdomainIndex === 0}
+            >
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Sebelumnya
+            </Button>
 
-          <Button onClick={goToNextSubdomain}>
-            Selanjutnya
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardFooter>
+            <Button onClick={goToNextSubdomain}>
+              Selanjutnya
+              <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
