@@ -106,6 +106,6 @@
   }
   
   .glass-card {
-    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg;
+    @apply bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-md;
   }
 }

@@ -1,4 +1,3 @@
-
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -45,7 +44,7 @@ export default function Landing() {
       </section>
 
       {/* Header section with COBIT 2019 overview */}
-      <section className="py-16 px-6 bg-white dark:bg-gray-950">
+      <section className="py-16 px-6 bg-gradient-to-b from-white to-cobain-blue/5 dark:from-gray-950 dark:to-cobain-blue/10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">{t("landing.cobit.title")}</h2>
@@ -55,7 +54,7 @@ export default function Landing() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
               <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
                 <CheckCircle className="h-6 w-6 text-cobain-blue" />
               </div>
@@ -65,7 +64,7 @@ export default function Landing() {
               </p>
             </div>
             
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
               <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
                 <BarChart3 className="h-6 w-6 text-cobain-blue" />
               </div>
@@ -75,7 +74,7 @@ export default function Landing() {
               </p>
             </div>
             
-            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
               <div className="bg-cobain-blue/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
                 <Award className="h-6 w-6 text-cobain-blue" />
               </div>
@@ -89,14 +88,14 @@ export default function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 px-6 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 px-6 bg-gradient-to-b from-cobain-blue/5 to-cobain-blue/10 dark:from-gray-900 dark:to-gray-800">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">
             {t("landing.features.title")}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Feature 1 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            {/* Feature cards - updating glass-card styling */}
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <Users className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -106,8 +105,8 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 2 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            {/* Repeat the same style for all other feature cards */}
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <LayoutDashboard className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -117,8 +116,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 3 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <ChartBar className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -128,8 +126,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 4 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <PieChart className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -139,8 +136,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 5 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <BookOpen className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -150,8 +146,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 6 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <FileText className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -161,8 +156,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 7 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <FolderOpen className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -172,8 +166,7 @@ export default function Landing() {
               </p>
             </div>
 
-            {/* Feature 8 */}
-            <div className="glass-card p-6 flex flex-col items-center text-center">
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm transition-all hover:shadow-md p-6 flex flex-col items-center text-center">
               <div className="bg-cobain-blue/10 p-3 rounded-full mb-4">
                 <ShieldCheck className="h-8 w-8 text-cobain-blue" />
               </div>
@@ -187,7 +180,7 @@ export default function Landing() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-16 px-6 bg-white dark:bg-gray-950">
+      <section className="py-16 px-6 bg-gradient-to-b from-cobain-blue/10 to-white dark:from-gray-800 dark:to-gray-950">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">{t("landing.benefits.title")}</h2>
           
@@ -272,14 +265,14 @@ export default function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-6 bg-cobain-blue/10 dark:bg-gray-800">
+      <section className="py-16 px-6 bg-gradient-to-br from-cobain-blue/20 to-cobain-burgundy/10 dark:from-gray-800 dark:to-cobain-burgundy/20 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6">{t("landing.cta.title")}</h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
             {t("landing.cta.subtitle")}
           </p>
           <Link to="/login">
-            <Button size="lg" className="bg-cobain-blue hover:bg-cobain-navy">
+            <Button size="lg" className="bg-cobain-blue hover:bg-cobain-navy transition-all hover:shadow-lg">
               {t("landing.cta.button")}
             </Button>
           </Link>
@@ -287,7 +280,7 @@ export default function Landing() {
       </section>
 
       {/* Simple footer for landing page */}
-      <footer className="bg-gray-100 dark:bg-gray-900 py-6 px-6">
+      <footer className="bg-gradient-to-t from-gray-200 to-white dark:from-gray-900 dark:to-gray-800 py-6 px-6">
         <div className="max-w-7xl mx-auto">
           <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
             COBAIN — (Comprehensive Online-Based Audit Instrument) © {new Date().getFullYear()}
