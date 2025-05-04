@@ -54,6 +54,41 @@ export type Database = {
           },
         ]
       }
+      audit_domains: {
+        Row: {
+          audit_id: string
+          created_at: string
+          domain_id: string
+          id: string
+          selected: boolean
+          updated_at: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          domain_id: string
+          id?: string
+          selected?: boolean
+          updated_at?: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          domain_id?: string
+          id?: string
+          selected?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_domains_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audits: {
         Row: {
           audit_date: string
