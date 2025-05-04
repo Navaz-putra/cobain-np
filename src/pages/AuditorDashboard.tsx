@@ -109,7 +109,16 @@ export default function AuditorDashboard() {
           throw error;
         }
         
-        setAudits(data || []);
+        // Fetch audit progress for each audit
+        const auditsWithProgress = await Promise.all((data || []).map(async (audit) => {
+          const progress = await getAuditProgress(audit.id);
+          return {
+            ...audit,
+            progress: Math.round(progress)
+          };
+        }));
+        
+        setAudits(auditsWithProgress);
       } catch (error) {
         console.error("Error fetching audits:", error);
         toast({
@@ -228,8 +237,8 @@ export default function AuditorDashboard() {
         
       if (answersError) throw answersError;
       
-      const totalQuestions = questionsData[0]?.count || 0;
-      const answeredQuestions = answersData[0]?.count || 0;
+      const totalQuestions = parseInt(questionsData[0]?.count) || 0;
+      const answeredQuestions = parseInt(answersData[0]?.count) || 0;
       
       return totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
     } catch (error) {
