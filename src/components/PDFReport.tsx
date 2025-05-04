@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { FileText, Download } from "lucide-react"; 
+import { Download } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 
