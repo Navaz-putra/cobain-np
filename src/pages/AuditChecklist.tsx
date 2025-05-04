@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Slider } from "@/components/ui/slider";
 import { MaturityLevelInfo } from "@/components/MaturityLevelInfo";
 
 // Define maturity level descriptions
@@ -302,8 +302,8 @@ export default function AuditChecklist() {
     }
   }, [currentDomain, currentSubdomainIndex, domains]);
 
-  const handleMaturityLevelChange = async (questionId: string, value: string) => {
-    const maturityLevel = parseInt(value);
+  const handleMaturityLevelChange = async (questionId: string, value: number[]) => {
+    const maturityLevel = value[0];
     
     // Update local state
     const newAnswers = { ...answers };
@@ -484,20 +484,7 @@ export default function AuditChecklist() {
     );
   }
 
-  // Map maturity levels to colors for visual indication
-  const getMaturityColor = (level: number) => {
-    switch (level) {
-      case 0: return "maturity0"; 
-      case 1: return "maturity1";
-      case 2: return "maturity2";
-      case 3: return "maturity3";
-      case 4: return "maturity4";
-      case 5: return "maturity5";
-      default: return "default";
-    }
-  };
-
-  // Generate background colors for maturity level badges
+  // Function to get the appropriate maturity level badge color
   const getMaturityBadgeColor = (level: number) => {
     switch (level) {
       case 0: return "bg-red-100 text-red-800 border-red-300";
@@ -579,36 +566,43 @@ export default function AuditChecklist() {
                         Tingkat Kematangan <span className="text-red-500">*</span>
                       </label>
                       
-                      <div className="flex flex-col space-y-4">
-                        <ToggleGroup 
-                          type="single" 
-                          value={String(question.answer?.maturity_level ?? "")}
-                          onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
-                          className="flex flex-wrap"
-                        >
-                          {maturityLevels.map((level) => (
-                            <ToggleGroupItem 
-                              key={level.value} 
-                              value={String(level.value)}
-                              variant={getMaturityColor(level.value)}
-                              className="flex-1 py-3 font-medium text-sm"
-                              aria-label={level.label}
-                            >
-                              {level.label}
-                            </ToggleGroupItem>
-                          ))}
-                        </ToggleGroup>
+                      <div className="space-y-6">
+                        {/* Maturity Level Slider */}
+                        <div className="px-2">
+                          <Slider
+                            defaultValue={[question.answer?.maturity_level || 0]}
+                            value={[question.answer?.maturity_level !== undefined ? question.answer.maturity_level : 0]}
+                            onValueChange={(value) => handleMaturityLevelChange(question.id, value)}
+                            max={5}
+                            step={1}
+                            className="w-full"
+                          />
+                          
+                          <div className="flex justify-between mt-2 text-xs text-gray-500">
+                            {maturityLevels.map((level) => (
+                              <div key={level.value} className="flex flex-col items-center">
+                                <span className="font-medium">{level.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Selected Maturity Level Display */}
+                        {question.answer?.maturity_level !== undefined && (
+                          <div className="mt-2">
+                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${getMaturityBadgeColor(question.answer.maturity_level)}`}>
+                              <span className="font-medium mr-1">Level {question.answer.maturity_level}:</span>
+                              {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.label.split(" - ")[1]}
+                            </div>
+                            <p className="text-sm mt-2 px-3 py-2 bg-gray-50 rounded border border-gray-100">
+                              {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
+                            </p>
+                          </div>
+                        )}
                         
                         {missingAnswers.includes(question.id) && (
                           <p className="text-xs text-red-500 mt-1">
                             Tingkat kematangan wajib diisi
-                          </p>
-                        )}
-                        
-                        {question.answer?.maturity_level !== undefined && (
-                          <p className="text-sm px-3 py-2 bg-gray-50 rounded border border-gray-100">
-                            <span className="font-medium">{maturityLevels.find(l => l.value === question.answer?.maturity_level)?.label}:</span>{" "}
-                            {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
                           </p>
                         )}
                       </div>
