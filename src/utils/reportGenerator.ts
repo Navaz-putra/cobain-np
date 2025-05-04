@@ -2,10 +2,6 @@
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import autoTable from 'jspdf-autotable';
-import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
-
-// Register all chart.js components
-Chart.register(...registerables);
 
 // Domain and subdomain name mappings with Indonesian translations
 const domainNames: Record<string, string> = {
@@ -89,13 +85,6 @@ interface Recommendation {
   impact: string;
 }
 
-// Colors for charts
-const chartColors = {
-  currentLevel: 'rgba(99, 102, 241, 0.7)',
-  targetLevel: 'rgba(244, 114, 182, 0.7)',
-  gap: 'rgba(234, 179, 8, 0.5)'
-};
-
 // Maturity level descriptions
 const maturityLevelDescriptions: Record<number, {name: string, description: string}> = {
   0: {
@@ -165,7 +154,7 @@ export const generateAuditReport = async (auditId: string) => {
       notes: answer.notes
     }));
 
-    // Generate domain-level maturity data for radar chart
+    // Generate domain-level maturity data
     const domainsData = calculateDomainMaturityLevels(auditResults);
 
     // Generate recommendations based on gap analysis
@@ -217,78 +206,55 @@ export const generateAuditReport = async (auditId: string) => {
       yPosition += 5 + (descLines.length * 5);
     });
     
-    // Create radar chart for maturity levels
-    const radarChartCanvas = document.createElement('canvas');
-    radarChartCanvas.width = 500;
-    radarChartCanvas.height = 300;
-    radarChartCanvas.style.display = 'none';
-    document.body.appendChild(radarChartCanvas);
-    
-    // Generate radar chart
-    createRadarChart(radarChartCanvas, domainsData);
-    
-    // Add chart to PDF with explanatory text
+    // Add new page for Radar Chart replacement
     pdf.addPage();
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Radar Chart / Diagram Radar", 105, 20, {
+    pdf.text("Maturity Level Comparison / Perbandingan Tingkat Kematangan", 105, 20, {
       align: "center"
     });
     
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
-    pdf.text("Visualization of current vs target maturity levels across domains", 105, 27, {
+    pdf.text("Comparison of current vs target maturity levels across domains", 105, 27, {
       align: "center"
     });
-    pdf.text("Visualisasi perbandingan tingkat kematangan saat ini dan target di semua domain", 105, 32, {
+    pdf.text("Perbandingan tingkat kematangan saat ini dan target di semua domain", 105, 32, {
       align: "center"
     });
     
-    // Add chart to PDF
-    pdf.addImage(radarChartCanvas.toDataURL(), 'PNG', 30, 40, 150, 90);
+    // Replace radar chart with a comparison table
+    addMaturityComparisonTable(pdf, domainsData, 40);
     
-    // Add explanatory text below chart
+    // Add explanatory text below table
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
-    const radarExplanation = "Diagram radar di atas menunjukkan perbandingan antara tingkat kematangan saat ini (biru) dan tingkat target (merah muda) untuk setiap domain COBIT. Semakin jauh jarak dari pusat, semakin tinggi tingkat kematangan. Area yang memiliki kesenjangan besar antara kondisi saat ini dan target memerlukan perhatian lebih.";
+    const radarExplanation = "Tabel di atas menunjukkan perbandingan antara tingkat kematangan saat ini dan tingkat target untuk setiap domain COBIT. Semakin tinggi nilai, semakin tinggi tingkat kematangan. Area yang memiliki kesenjangan besar antara kondisi saat ini dan target memerlukan perhatian lebih.";
     const radarLines = pdf.splitTextToSize(radarExplanation, 170);
-    pdf.text(radarLines, 20, 140);
     
-    // Remove canvas after generating image
-    document.body.removeChild(radarChartCanvas);
+    // Add text below the table (get position from the last table)
+    const finalY1 = (pdf as any).lastAutoTable?.finalY || 140;
+    pdf.text(radarLines, 20, finalY1 + 10);
 
     // Add gap analysis
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Gap Analysis / Analisis Kesenjangan", 105, 160, {
+    pdf.text("Gap Analysis / Analisis Kesenjangan", 105, finalY1 + 30, {
       align: "center"
     });
 
-    // Create bar chart for gap analysis
-    const barChartCanvas = document.createElement('canvas');
-    barChartCanvas.width = 500;
-    barChartCanvas.height = 300;
-    barChartCanvas.style.display = 'none';
-    document.body.appendChild(barChartCanvas);
-    
-    // Generate bar chart
-    createBarChart(barChartCanvas, domainsData);
-    
-    // Add chart to PDF with explanatory text
+    // Replace bar chart with a gap analysis table
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
-    pdf.text("Bar chart showing current levels, target levels, and gaps for each domain", 105, 167, {
+    pdf.text("Table showing current levels, target levels, and gaps for each domain", 105, finalY1 + 37, {
       align: "center"
     });
-    pdf.text("Diagram batang yang menunjukkan tingkat saat ini, tingkat target, dan kesenjangan untuk setiap domain", 105, 172, {
+    pdf.text("Tabel yang menunjukkan tingkat saat ini, tingkat target, dan kesenjangan untuk setiap domain", 105, finalY1 + 42, {
       align: "center"
     });
     
-    // Add chart to PDF
-    pdf.addImage(barChartCanvas.toDataURL(), 'PNG', 30, 180, 150, 90);
-    
-    // Remove canvas after generating image
-    document.body.removeChild(barChartCanvas);
+    // Add gap analysis table
+    addGapAnalysisTable(pdf, domainsData, 20, finalY1 + 50);
 
     // Add a page break
     pdf.addPage();
@@ -309,8 +275,8 @@ export const generateAuditReport = async (auditId: string) => {
       align: "center"
     });
     
-    // Add gap analysis table
-    addGapAnalysisTable(pdf, domainsData, 20, 40);
+    // Add detailed gap analysis table
+    addDetailedGapTable(pdf, domainsData, 20, 40);
 
     // Add heat map for prioritization
     pdf.addPage();
@@ -371,7 +337,7 @@ export const generateAuditReport = async (auditId: string) => {
 
     addRecommendationsTable(pdf, recommendations, 40);
 
-    // Add maturity trend analysis (simulated for this report)
+    // Add maturity trend analysis (replace chart with table)
     pdf.addPage();
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
@@ -388,28 +354,18 @@ export const generateAuditReport = async (auditId: string) => {
       align: "center"
     });
     
-    // Create trend chart
-    const trendChartCanvas = document.createElement('canvas');
-    trendChartCanvas.width = 500;
-    trendChartCanvas.height = 300;
-    trendChartCanvas.style.display = 'none';
-    document.body.appendChild(trendChartCanvas);
+    // Add maturity trend table
+    addMaturityTrendTable(pdf, domainsData, 40);
     
-    // Generate trend chart
-    createTrendChart(trendChartCanvas, domainsData);
-    
-    // Add chart to PDF
-    pdf.addImage(trendChartCanvas.toDataURL(), 'PNG', 30, 40, 150, 90);
-    
-    // Add explanatory text below chart
+    // Add explanatory text below table
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
-    const trendExplanation = "Diagram ini menunjukkan proyeksi peningkatan tingkat kematangan dalam 12 bulan ke depan jika rekomendasi diterapkan sesuai prioritas. Proyeksi ini mengasumsikan implementasi yang efektif dari langkah-langkah yang direkomendasikan dan komitmen manajemen yang berkelanjutan.";
+    const trendExplanation = "Tabel ini menunjukkan proyeksi peningkatan tingkat kematangan dalam 12 bulan ke depan jika rekomendasi diterapkan sesuai prioritas. Proyeksi ini mengasumsikan implementasi yang efektif dari langkah-langkah yang direkomendasikan dan komitmen manajemen yang berkelanjutan.";
     const trendLines = pdf.splitTextToSize(trendExplanation, 170);
-    pdf.text(trendLines, 20, 140);
     
-    // Remove canvas after generating image
-    document.body.removeChild(trendChartCanvas);
+    // Get position from last table
+    const finalY2 = (pdf as any).lastAutoTable?.finalY || 140;
+    pdf.text(trendLines, 20, finalY2 + 10);
 
     // Add implementation roadmap
     pdf.addPage();
@@ -548,148 +504,130 @@ const generateRecommendations = (maturityData: DomainMaturityData[]): Recommenda
   });
 };
 
-// Create radar chart for maturity visualization
-const createRadarChart = (canvas: HTMLCanvasElement, data: DomainMaturityData[]) => {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  
-  const labels = data.map(d => `${d.domain}\n${d.domainName.substring(0, 15)}...`);
-  const currentLevels = data.map(d => d.currentLevel);
-  const targetLevels = data.map(d => d.targetLevel);
-  
-  new Chart(ctx, {
-    type: 'radar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Tingkat Saat Ini',
-          data: currentLevels,
-          backgroundColor: chartColors.currentLevel,
-          borderColor: chartColors.currentLevel.replace('0.7', '1'),
-          borderWidth: 1
-        },
-        {
-          label: 'Tingkat Target',
-          data: targetLevels,
-          backgroundColor: chartColors.targetLevel,
-          borderColor: chartColors.targetLevel.replace('0.7', '1'),
-          borderWidth: 1
-        }
-      ]
+// New function to add maturity comparison table (replaces radar chart)
+const addMaturityComparisonTable = (pdf: jsPDF, data: DomainMaturityData[], startY: number): void => {
+  const tableData = data.map(d => [
+    d.domain,
+    d.domainName,
+    d.currentLevel.toString(),
+    d.targetLevel.toString(),
+  ]);
+
+  autoTable(pdf, {
+    startY: startY,
+    head: [["Domain", "Domain Name / Nama Domain", "Current Level / Tingkat Saat Ini", "Target Level / Tingkat Target"]],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [80, 80, 80] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 90 },
+      2: { cellWidth: 35, halign: 'center' },
+      3: { cellWidth: 35, halign: 'center' }
     },
-    options: {
-      scales: {
-        r: {
-          angleLines: {
-            display: true
-          },
-          min: 0,
-          max: 5,
-          ticks: {
-            stepSize: 1
-          },
-          pointLabels: {
-            font: {
-              size: 12
-            }
-          }
-        }
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            label: function(context) {
-              const label = context.dataset.label || '';
-              return `${label}: ${context.raw}`;
-            }
-          }
+    didParseCell: function(data) {
+      // Color the current level cell based on value
+      if (data.section === 'body' && data.column.index === 2) {
+        const level = parseFloat(data.cell.raw?.toString() || "0");
+        if (level < 2) {
+          data.cell.styles.fillColor = [255, 179, 179]; // Light red for low levels
+        } else if (level < 4) {
+          data.cell.styles.fillColor = [255, 255, 179]; // Light yellow for medium levels
+        } else {
+          data.cell.styles.fillColor = [179, 255, 179]; // Light green for high levels
         }
       }
     }
   });
 };
 
-// Create bar chart for gap analysis
-const createBarChart = (canvas: HTMLCanvasElement, data: DomainMaturityData[]) => {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  
-  const labels = data.map(d => d.domain);
-  const currentLevels = data.map(d => d.currentLevel);
-  const targetLevels = data.map(d => d.targetLevel);
-  const gaps = data.map(d => d.targetLevel - d.currentLevel);
-  
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Tingkat Saat Ini',
-          data: currentLevels,
-          backgroundColor: chartColors.currentLevel,
-          borderColor: 'rgba(0,0,0,0.1)',
-          borderWidth: 1
-        },
-        {
-          label: 'Tingkat Target',
-          data: targetLevels,
-          backgroundColor: chartColors.targetLevel,
-          borderColor: 'rgba(0,0,0,0.1)',
-          borderWidth: 1
-        },
-        {
-          label: 'Kesenjangan',
-          data: gaps,
-          backgroundColor: chartColors.gap,
-          borderColor: 'rgba(0,0,0,0.1)',
-          borderWidth: 1
-        }
-      ]
+// New function to add detailed gap table
+const addDetailedGapTable = (pdf: jsPDF, data: DomainMaturityData[], x: number, y: number): void => {
+  // First add a table with the gap analysis data
+  const tableData = data.map(d => {
+    const gap = d.targetLevel - d.currentLevel;
+    let priority = '';
+    
+    if (gap > 3) priority = 'Kritis';
+    else if (gap > 2) priority = 'Tinggi';
+    else if (gap > 1) priority = 'Sedang';
+    else priority = 'Rendah';
+    
+    return [
+      d.domain,
+      d.domainName.length > 20 ? d.domainName.substring(0, 20) + "..." : d.domainName,
+      d.currentLevel.toString(),
+      d.targetLevel.toString(),
+      gap.toFixed(2),
+      priority
+    ];
+  });
+
+  autoTable(pdf, {
+    startY: y,
+    head: [["Domain", "Nama Domain", "Saat Ini\nCurrent", "Target", "Kesenjangan\nGap", "Prioritas\nPriority"]],
+    body: tableData,
+    theme: 'striped',
+    headStyles: { fillColor: [80, 80, 80] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 25, halign: 'center' },
+      3: { cellWidth: 25, halign: 'center' },
+      4: { cellWidth: 20, halign: 'center' },
+      5: { cellWidth: 25, halign: 'center' }
     },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 5,
-          title: {
-            display: true,
-            text: 'Tingkat Kematangan / Maturity Level'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: 'Domain'
-          }
-        }
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            footer: function(tooltipItems) {
-              const item = tooltipItems[0];
-              const dataIndex = item.dataIndex;
-              const domainName = data[dataIndex].domainName;
-              return `${data[dataIndex].domain}: ${domainName}`;
-            }
-          }
+    didParseCell: function(data) {
+      // Color the priority cell based on value
+      if (data.section === 'body' && data.column.index === 5) {
+        const priority = data.cell.raw?.toString();
+        if (priority === 'Kritis') {
+          data.cell.styles.fillColor = [255, 99, 132];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'Tinggi') {
+          data.cell.styles.fillColor = [255, 159, 64];
+          data.cell.styles.textColor = [255, 255, 255];
+        } else if (priority === 'Sedang') {
+          data.cell.styles.fillColor = [255, 205, 86];
+        } else {
+          data.cell.styles.fillColor = [75, 192, 192];
         }
       }
     }
   });
+
+  // Add gap analysis text
+  const finalY = (pdf as any).lastAutoTable?.finalY || (y + 120);
+  
+  pdf.setFontSize(12);
+  pdf.setTextColor(40, 40, 40);
+  pdf.text("Gap Analysis Summary / Ringkasan Analisis Kesenjangan", 20, finalY + 20);
+  pdf.setFontSize(10);
+  pdf.setTextColor(60, 60, 60);
+
+  // Generate gap analysis text
+  let gapAnalysisText = "This table shows the maturity gap between current and target levels for each COBIT domain. Higher gaps indicate areas requiring more immediate attention.\n\n";
+  gapAnalysisText += "Tabel ini menunjukkan kesenjangan kematangan antara tingkat saat ini dan target untuk setiap domain COBIT. Kesenjangan yang lebih tinggi menunjukkan area yang memerlukan perhatian lebih segera.\n\n";
+  
+  const gapAnalysis = data.map((d) => {
+    const gap = d.targetLevel - d.currentLevel;
+    return `${d.domain} (${d.domainName}): Current/Saat ini ${d.currentLevel} vs Target ${d.targetLevel} - Gap/Kesenjangan: ${gap.toFixed(2)}`;
+  });
+
+  gapAnalysisText += gapAnalysis.join("\n");
+  const analysisLines = pdf.splitTextToSize(gapAnalysisText, 170);
+  pdf.text(analysisLines, 20, finalY + 30);
 };
 
-// Create trend chart for improvement projection
-const createTrendChart = (canvas: HTMLCanvasElement, data: DomainMaturityData[]) => {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+// New function to add maturity trend table
+const addMaturityTrendTable = (pdf: jsPDF, data: DomainMaturityData[], startY: number): void => {
+  const periods = ["Current", "3 months", "6 months", "9 months", "12 months"];
   
-  const labels = ["Current", "3 months", "6 months", "9 months", "12 months"];
-  const datasets = data.map((domain, index) => {
-    // Simulate improvement progression based on gap
+  // Create header row with periods
+  const headRow = ["Domain", "Domain Name / Nama Domain", ...periods];
+  
+  // Create body rows with simulated improvement progression for each domain
+  const bodyRows = data.map(domain => {
     const gap = domain.targetLevel - domain.currentLevel;
     const progression = [
       domain.currentLevel,
@@ -697,58 +635,36 @@ const createTrendChart = (canvas: HTMLCanvasElement, data: DomainMaturityData[])
       domain.currentLevel + (gap * 0.4),
       domain.currentLevel + (gap * 0.7),
       domain.currentLevel + (gap * 0.9)
+    ].map(val => val.toFixed(2));
+    
+    return [
+      domain.domain,
+      domain.domainName.length > 25 ? domain.domainName.substring(0, 25) + "..." : domain.domainName,
+      ...progression
     ];
-    
-    // Generate distinct colors for each domain
-    const hue = (index * 30) % 360;
-    const color = `hsl(${hue}, 70%, 60%)`;
-    
-    return {
-      label: domain.domain,
-      data: progression.map(val => parseFloat(val.toFixed(2))),
-      borderColor: color,
-      backgroundColor: `hsla(${hue}, 70%, 60%, 0.1)`,
-      tension: 0.4
-    };
   });
   
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: datasets
+  autoTable(pdf, {
+    startY: startY,
+    head: [headRow],
+    body: bodyRows,
+    theme: 'grid',
+    headStyles: { fillColor: [80, 80, 80] },
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 20, halign: 'center' },
+      5: { cellWidth: 20, halign: 'center' },
+      6: { cellWidth: 20, halign: 'center' }
     },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 5,
-          title: {
-            display: true,
-            text: 'Projected Maturity Level / Tingkat Kematangan yang Diproyeksikan'
-          }
-        },
-        x: {
-          title: {
-            display: true,
-            text: 'Timeline / Lini Waktu'
-          }
-        }
-      },
-      plugins: {
-        tooltip: {
-          callbacks: {
-            title: function(tooltipItems) {
-              return `Period: ${tooltipItems[0].label}`;
-            },
-            label: function(context) {
-              const dataIndex = context.datasetIndex;
-              const domainName = data[dataIndex].domainName;
-              return `${context.dataset.label} (${domainName.substring(0, 20)}...): ${context.raw}`;
-            }
-          }
-        }
+    didParseCell: function(data) {
+      // Apply color gradient to show improvement over time
+      if (data.section === 'body' && data.column.index > 1) {
+        // Calculate the shade intensity based on the column (time period)
+        const intensity = Math.min(255, 255 - ((data.column.index - 2) * 40));
+        data.cell.styles.fillColor = [intensity, 255, intensity];
       }
     }
   });
