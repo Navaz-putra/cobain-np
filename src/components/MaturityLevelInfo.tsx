@@ -20,7 +20,7 @@ export function MaturityLevelInfo() {
         <AccordionItem value="level-0" className="border-b border-gray-200 dark:border-gray-700">
           <AccordionTrigger className="text-sm font-medium py-2">
             <div className="flex items-center">
-              <div className="bg-gray-200 dark:bg-gray-700 w-6 h-6 rounded-full flex items-center justify-center mr-2">
+              <div className="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">0</span>
               </div>
               <span>Incomplete Process</span>
@@ -34,7 +34,7 @@ export function MaturityLevelInfo() {
         <AccordionItem value="level-1" className="border-b border-gray-200 dark:border-gray-700">
           <AccordionTrigger className="text-sm font-medium py-2">
             <div className="flex items-center">
-              <div className="bg-red-100 dark:bg-red-900 w-6 h-6 rounded-full flex items-center justify-center mr-2">
+              <div className="bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">1</span>
               </div>
               <span>Performed Process</span>
@@ -48,7 +48,7 @@ export function MaturityLevelInfo() {
         <AccordionItem value="level-2" className="border-b border-gray-200 dark:border-gray-700">
           <AccordionTrigger className="text-sm font-medium py-2">
             <div className="flex items-center">
-              <div className="bg-orange-100 dark:bg-orange-900 w-6 h-6 rounded-full flex items-center justify-center mr-2">
+              <div className="bg-yellow-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">2</span>
               </div>
               <span>Managed Process</span>
@@ -62,7 +62,7 @@ export function MaturityLevelInfo() {
         <AccordionItem value="level-3" className="border-b border-gray-200 dark:border-gray-700">
           <AccordionTrigger className="text-sm font-medium py-2">
             <div className="flex items-center">
-              <div className="bg-yellow-100 dark:bg-yellow-900 w-6 h-6 rounded-full flex items-center justify-center mr-2">
+              <div className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">3</span>
               </div>
               <span>Established Process</span>
@@ -76,7 +76,7 @@ export function MaturityLevelInfo() {
         <AccordionItem value="level-4" className="border-b border-gray-200 dark:border-gray-700">
           <AccordionTrigger className="text-sm font-medium py-2">
             <div className="flex items-center">
-              <div className="bg-green-100 dark:bg-green-900 w-6 h-6 rounded-full flex items-center justify-center mr-2">
+              <div className="bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">4</span>
               </div>
               <span>Predictable Process</span>
@@ -90,7 +90,7 @@ export function MaturityLevelInfo() {
         <AccordionItem value="level-5" className="border-b border-gray-200 dark:border-gray-700">
           <AccordionTrigger className="text-sm font-medium py-2">
             <div className="flex items-center">
-              <div className="bg-blue-100 dark:bg-blue-900 w-6 h-6 rounded-full flex items-center justify-center mr-2">
+              <div className="bg-green-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">5</span>
               </div>
               <span>Optimizing Process</span>
