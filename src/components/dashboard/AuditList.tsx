@@ -1,10 +1,22 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Info, ChevronRight, Clock, ClipboardCheck, FileCheck } from "lucide-react";
+import { Info, ChevronRight, Clock, ClipboardCheck, FileCheck, Trash2 } from "lucide-react";
 import { PDFReport } from "@/components/PDFReport";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface AuditItemProps {
   audit: {
@@ -15,6 +27,7 @@ interface AuditItemProps {
     status: string;
     progress: number;
   };
+  onDelete: (id: string) => void;
 }
 
 const getStatusBadge = (status: string) => {
@@ -45,7 +58,9 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-export const AuditItem: React.FC<AuditItemProps> = ({ audit }) => {
+export const AuditItem: React.FC<AuditItemProps> = ({ audit, onDelete }) => {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
   return (
     <div
       key={audit.id}
@@ -89,8 +104,36 @@ export const AuditItem: React.FC<AuditItemProps> = ({ audit }) => {
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex items-center text-destructive hover:bg-destructive/10" 
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Audit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus audit "{audit.title}"? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              onDelete(audit.id);
+              setIsDeleteDialogOpen(false);
+            }} className="bg-destructive hover:bg-destructive/90">
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -98,9 +141,50 @@ export const AuditItem: React.FC<AuditItemProps> = ({ audit }) => {
 interface AuditListProps {
   audits: any[];
   loading: boolean;
+  setAudits?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-export const AuditList: React.FC<AuditListProps> = ({ audits, loading }) => {
+export const AuditList: React.FC<AuditListProps> = ({ audits, loading, setAudits }) => {
+  const { toast } = useToast();
+
+  const handleDeleteAudit = async (auditId: string) => {
+    try {
+      // Delete audit answers first (due to foreign key constraint)
+      const { error: answersError } = await supabase
+        .from('audit_answers')
+        .delete()
+        .eq('audit_id', auditId);
+      
+      if (answersError) throw answersError;
+      
+      // Then delete the audit
+      const { error } = await supabase
+        .from('audits')
+        .delete()
+        .eq('id', auditId);
+        
+      if (error) throw error;
+      
+      // Update UI by removing the deleted audit
+      if (setAudits) {
+        setAudits(prevAudits => prevAudits.filter(audit => audit.id !== auditId));
+      }
+      
+      toast({
+        title: "Audit Dihapus",
+        description: "Audit telah berhasil dihapus dari sistem."
+      });
+      
+    } catch (error) {
+      console.error("Error deleting audit:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal menghapus audit. Silakan coba lagi."
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center py-8">
@@ -133,7 +217,7 @@ export const AuditList: React.FC<AuditListProps> = ({ audits, loading }) => {
   return (
     <div className="grid gap-5">
       {audits.map((audit) => (
-        <AuditItem key={audit.id} audit={audit} />
+        <AuditItem key={audit.id} audit={audit} onDelete={handleDeleteAudit} />
       ))}
     </div>
   );

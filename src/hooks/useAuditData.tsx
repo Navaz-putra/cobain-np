@@ -70,8 +70,8 @@ export const useAuditData = ({ userId }: UseAuditDataProps) => {
         
       if (answersError) throw answersError;
       
-      const totalQuestions = parseInt(questionsData[0]?.count as string) || 0;
-      const answeredQuestions = parseInt(answersData[0]?.count as string) || 0;
+      const totalQuestions = parseInt(questionsData[0]?.count as unknown as string) || 0;
+      const answeredQuestions = parseInt(answersData[0]?.count as unknown as string) || 0;
       
       return totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
     } catch (error) {
@@ -80,5 +80,5 @@ export const useAuditData = ({ userId }: UseAuditDataProps) => {
     }
   };
 
-  return { audits, loading };
+  return { audits, loading, setAudits };
 };

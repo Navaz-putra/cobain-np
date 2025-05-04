@@ -60,7 +60,7 @@ export default function AuditorDashboard() {
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   
   // Use the extracted hook to fetch audit data
-  const { audits, loading } = useAuditData({ userId: user?.id });
+  const { audits, loading, setAudits } = useAuditData({ userId: user?.id });
 
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-950 min-h-screen">
@@ -124,7 +124,7 @@ export default function AuditorDashboard() {
                 <CardDescription>Daftar penilaian COBIT 2019 Anda</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <AuditList audits={audits} loading={loading} />
+                <AuditList audits={audits} loading={loading} setAudits={setAudits} />
               </CardContent>
               <CardFooter className="flex justify-center border-t pt-4 pb-2">
                 <Link to="/start-audit">
