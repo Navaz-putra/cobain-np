@@ -11,14 +11,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { ClipboardCheck, Layout, BarChart, Clock, User } from "lucide-react";
+import { ClipboardCheck, Layout, BarChart, Clock } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Import refactored components
 import { AuditList } from "@/components/dashboard/AuditList";
 import { StatisticsView } from "@/components/dashboard/StatisticsView";
 import { RecentActivities, RecentActivitiesFooter } from "@/components/dashboard/RecentActivities";
-import { AccountSettings } from "@/components/dashboard/AccountSettings";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { useAuditData } from "@/hooks/useAuditData";
 import { GettingStartedGuide } from "@/components/GettingStartedGuide";
@@ -57,7 +56,6 @@ const mockAudits = [
 
 export default function AuditorDashboard() {
   const { user } = useAuth();
-  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   
   // Use the extracted hook to fetch audit data
   const { audits, loading, setAudits } = useAuditData({ userId: user?.id });
@@ -67,12 +65,6 @@ export default function AuditorDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header with welcome banner */}
         <DashboardHeader audits={audits} />
-
-        {/* User Account Settings Dialog */}
-        <AccountSettings 
-          open={accountDialogOpen} 
-          onOpenChange={setAccountDialogOpen} 
-        />
 
         {/* Info and Quick Links */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -101,17 +93,6 @@ export default function AuditorDashboard() {
                 Aktivitas
               </TabsTrigger>
             </TabsList>
-            
-            {/* Account Settings Button */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-2" 
-              onClick={() => setAccountDialogOpen(true)}
-            >
-              <User className="h-4 w-4" />
-              <span className="hidden sm:inline">Pengaturan Akun</span>
-            </Button>
           </div>
 
           <TabsContent value="current-audits" className="pt-4">
