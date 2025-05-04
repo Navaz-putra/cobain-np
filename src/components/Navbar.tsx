@@ -1,6 +1,6 @@
+
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
-import { LanguageToggle } from "./LanguageToggle";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -66,7 +66,6 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center ml-4 space-x-2">
             <ThemeToggle />
-            <LanguageToggle />
           </div>
 
           {/* Mobile menu button */}
@@ -116,7 +115,6 @@ export function Navbar() {
                   
                   <div className="flex space-x-2 pt-4">
                     <ThemeToggle />
-                    <LanguageToggle />
                   </div>
                 </div>
               </SheetContent>
