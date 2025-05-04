@@ -57,6 +57,7 @@ export type Database = {
       audits: {
         Row: {
           audit_date: string
+          auditor_info: Json | null
           created_at: string
           description: string | null
           id: string
@@ -69,6 +70,7 @@ export type Database = {
         }
         Insert: {
           audit_date: string
+          auditor_info?: Json | null
           created_at?: string
           description?: string | null
           id?: string
@@ -81,6 +83,7 @@ export type Database = {
         }
         Update: {
           audit_date?: string
+          auditor_info?: Json | null
           created_at?: string
           description?: string | null
           id?: string
