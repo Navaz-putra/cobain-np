@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
@@ -12,6 +12,7 @@ interface PDFReportProps {
   size?: "default" | "sm" | "lg" | "icon";
   showIcon?: boolean;
   label?: string;
+  disabled?: boolean;
 }
 
 export const PDFReport: React.FC<PDFReportProps> = ({
@@ -20,12 +21,15 @@ export const PDFReport: React.FC<PDFReportProps> = ({
   variant = "outline",
   size = "default",
   showIcon = true,
-  label = "Ekspor PDF"
+  label = "Ekspor PDF",
+  disabled = false
 }) => {
   const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerateReport = async () => {
     try {
+      setIsGenerating(true);
       toast({
         title: "Menghasilkan Laporan",
         description: "Mohon tunggu sementara kami menghasilkan laporan PDF Anda..."
@@ -44,6 +48,8 @@ export const PDFReport: React.FC<PDFReportProps> = ({
         title: "Error",
         description: "Gagal menghasilkan laporan audit. Silakan coba lagi."
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -53,9 +59,10 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       variant={variant}
       size={size}
       onClick={handleGenerateReport}
+      disabled={disabled || isGenerating}
     >
-      {showIcon && <Download className="mr-2 h-4 w-4" />}
-      {label}
+      {showIcon && <Download className={`${isGenerating ? 'animate-pulse' : ''} mr-2 h-4 w-4`} />}
+      {isGenerating ? "Sedang menghasilkan..." : label}
     </Button>
   );
 };

@@ -44,12 +44,6 @@ export function Navbar() {
                 <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
                   <Button variant="ghost">{t("nav.dashboard")}</Button>
                 </Link>
-                <Link to="/audit">
-                  <Button variant="ghost">{t("nav.audit")}</Button>
-                </Link>
-                {user?.role === "admin" && <Link to="/users">
-                    <Button variant="ghost">{t("nav.users")}</Button>
-                  </Link>}
                 <Button variant="ghost" onClick={logout}>
                   <LogOut className="h-4 w-4 mr-2" />
                   {t("nav.logout")}
@@ -90,16 +84,6 @@ export function Navbar() {
                           {t("nav.dashboard")}
                         </Button>
                       </Link>
-                      <Link to="/audit" onClick={() => setIsOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">
-                          {t("nav.audit")}
-                        </Button>
-                      </Link>
-                      {user?.role === "admin" && <Link to="/users" onClick={() => setIsOpen(false)}>
-                          <Button variant="ghost" className="w-full justify-start">
-                            {t("nav.users")}
-                          </Button>
-                        </Link>}
                       <Button variant="ghost" onClick={handleLogout} className="w-full justify-start">
                         <LogOut className="h-4 w-4 mr-2" />
                         {t("nav.logout")}

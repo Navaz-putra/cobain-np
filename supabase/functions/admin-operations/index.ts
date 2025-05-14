@@ -31,6 +31,7 @@ serve(async (req) => {
     
     // Check for superadmin case from the request body
     const isSuperAdminRequest = requestData.superadmin === true;
+    const superadminEmail = requestData.superadminEmail;
     
     let isAdmin = false;
     let user = null;
@@ -62,6 +63,17 @@ serve(async (req) => {
       )
     }
 
+    // For superadmin email verification
+    if (isSuperAdminRequest && superadminEmail !== 'navazputra@students.amikom.ac.id') {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Superadmin email mismatch' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
     let data, error;
 
     // Perform the requested admin action
@@ -79,6 +91,44 @@ serve(async (req) => {
         break;
 
       case 'deleteUser':
+        // Verify if target user is not an admin before deletion
+        const targetUserResponse = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (targetUserResponse.error) {
+          return new Response(
+            JSON.stringify({ error: targetUserResponse.error.message }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        
+        const targetUser = targetUserResponse.data.user;
+        const isTargetAdmin = targetUser.user_metadata?.role === 'admin' || 
+                             targetUser.email === 'navazputra@students.amikom.ac.id';
+        
+        // If attempting to delete an admin, block it
+        if (isTargetAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Cannot delete admin users' }),
+            {
+              status: 403,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        
+        // Delete audits associated with the user first
+        const { error: auditDeleteError } = await supabaseAdmin
+          .from('audits')
+          .delete()
+          .eq('user_id', userId);
+          
+        if (auditDeleteError) {
+          console.error("Error deleting user's audits:", auditDeleteError);
+        }
+          
+        // Proceed with user deletion
         const deleteResponse = await supabaseAdmin.auth.admin.deleteUser(userId);
         data = deleteResponse.data;
         error = deleteResponse.error;
