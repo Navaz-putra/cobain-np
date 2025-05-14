@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
   CheckCircle, CircleX, Filter, ListPlus, ListMinus,
@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { PDFReport } from "@/components/PDFReport";
@@ -94,6 +93,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [searchUser, setSearchUser] = useState("");
   const [searchQuestion, setSearchQuestion] = useState("");
+  const [searchAudit, setSearchAudit] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [isAddQuestionDialogOpen, setIsAddQuestionDialogOpen] = useState(false);
   const [isEditQuestionDialogOpen, setIsEditQuestionDialogOpen] = useState(false);
@@ -147,7 +147,8 @@ export default function AdminDashboard() {
         console.error('Error fetching questions:', error);
         toast({
           title: 'Error',
-          description: 'Gagal mengambil data pertanyaan audit'
+          description: 'Gagal mengambil data pertanyaan audit',
+          variant: 'destructive'
         });
       } finally {
         setLoading(false);
@@ -162,18 +163,19 @@ export default function AdminDashboard() {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
-        const { data: userData, error: userError } = await supabase.auth.admin.listUsers();
+        const { data, error } = await supabase.auth.admin.listUsers();
         
-        if (userError) {
-          throw userError;
+        if (error) {
+          throw error;
         }
 
-        setUsers(userData?.users || []);
-      } catch (error) {
+        setUsers(data?.users || []);
+      } catch (error: any) {
         console.error('Error fetching users:', error);
         toast({
           title: 'Error',
-          description: 'Gagal mengambil data pengguna'
+          description: 'Gagal mengambil data pengguna',
+          variant: 'destructive'
         });
       } finally {
         setLoadingUsers(false);
@@ -201,7 +203,8 @@ export default function AdminDashboard() {
         console.error('Error fetching audits:', error);
         toast({
           title: 'Error',
-          description: 'Gagal mengambil data audit'
+          description: 'Gagal mengambil data audit',
+          variant: 'destructive'
         });
       } finally {
         setLoadingAudits(false);
@@ -235,12 +238,20 @@ export default function AdminDashboard() {
     (user.user_metadata?.name || "").toLowerCase().includes(searchUser.toLowerCase())
   );
 
+  // Filter audits based on search
+  const filteredAudits = audits.filter(audit => 
+    audit.title.toLowerCase().includes(searchAudit.toLowerCase()) ||
+    audit.organization.toLowerCase().includes(searchAudit.toLowerCase()) ||
+    (audit.user?.email || "").toLowerCase().includes(searchAudit.toLowerCase())
+  );
+
   const handleAddUser = async () => {
     try {
       if (!newUser.email || !newUser.password) {
         toast({
           title: "Error",
           description: "Email dan password harus diisi",
+          variant: 'destructive'
         });
         return;
       }
@@ -279,7 +290,8 @@ export default function AdminDashboard() {
       console.error("Error adding user:", error);
       toast({
         title: "Error",
-        description: `Gagal menambahkan pengguna: ${error.message}`
+        description: `Gagal menambahkan pengguna: ${error.message}`,
+        variant: 'destructive'
       });
     }
   };
@@ -304,7 +316,8 @@ export default function AdminDashboard() {
       console.error("Error deleting user:", error);
       toast({
         title: "Error",
-        description: `Gagal menghapus pengguna: ${error.message}`
+        description: `Gagal menghapus pengguna: ${error.message}`,
+        variant: 'destructive'
       });
     }
   };
@@ -315,6 +328,7 @@ export default function AdminDashboard() {
         toast({
           title: "Error",
           description: "Harap isi semua field yang diperlukan",
+          variant: 'destructive'
         });
         return;
       }
@@ -345,11 +359,12 @@ export default function AdminDashboard() {
         domain_id: "",
         subdomain_id: "",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding question:", error);
       toast({
         title: "Error",
-        description: "Gagal menambahkan pertanyaan"
+        description: `Gagal menambahkan pertanyaan: ${error.message}`,
+        variant: 'destructive'
       });
     }
   };
@@ -360,6 +375,7 @@ export default function AdminDashboard() {
         toast({
           title: "Error",
           description: "Harap isi semua field yang diperlukan",
+          variant: 'destructive'
         });
         return;
       }
@@ -386,11 +402,12 @@ export default function AdminDashboard() {
       });
       
       setIsEditQuestionDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating question:", error);
       toast({
         title: "Error",
-        description: "Gagal memperbarui pertanyaan"
+        description: `Gagal memperbarui pertanyaan: ${error.message}`,
+        variant: 'destructive'
       });
     }
   };
@@ -412,11 +429,12 @@ export default function AdminDashboard() {
         title: "Pertanyaan Dihapus",
         description: "Pertanyaan audit berhasil dihapus",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting question:", error);
       toast({
         title: "Error",
-        description: "Gagal menghapus pertanyaan"
+        description: `Gagal menghapus pertanyaan: ${error.message}`,
+        variant: 'destructive'
       });
     }
   };
@@ -641,7 +659,8 @@ export default function AdminDashboard() {
               </DialogContent>
             </Dialog>
 
-            <Button className="w-full justify-start" variant="outline">
+            <Button className="w-full justify-start" variant="outline" 
+              onClick={() => document.getElementById('reports-tab')?.click()}>
               <FileText className="mr-2 h-4 w-4" />
               Lihat Laporan Audit
             </Button>
@@ -673,7 +692,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="questions" className="w-full">
+      <Tabs defaultValue="users" className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="users">
             <Users className="mr-2 h-4 w-4" />
@@ -683,7 +702,7 @@ export default function AdminDashboard() {
             <FileText className="mr-2 h-4 w-4" />
             Pertanyaan Audit
           </TabsTrigger>
-          <TabsTrigger value="reports">
+          <TabsTrigger id="reports-tab" value="reports">
             <FileOutput className="mr-2 h-4 w-4" />
             Laporan Audit
           </TabsTrigger>
@@ -697,7 +716,7 @@ export default function AdminDashboard() {
               <CardDescription>Kelola pengguna dan peran mereka</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col md:flex-row justify-between items-center mb-4 space-y-2 md:space-y-0">
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -735,53 +754,58 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
-                          <TableCell>{user.user_metadata?.name || "-"}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell className="capitalize">{user.user_metadata?.role || "auditor"}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              {!user.banned_until ? (
-                                <>
-                                  <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                  Aktif
-                                </>
-                              ) : (
-                                <>
-                                  <CircleX className="mr-2 h-4 w-4 text-red-500" />
-                                  Nonaktif
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => {
-                                  /* Edit functionality would be implemented here */
-                                  toast({
-                                    title: "Info",
-                                    description: "Fitur edit pengguna akan segera hadir"
-                                  });
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleDeleteUser(user.id)}
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                      {filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
+                            <TableCell>{user.user_metadata?.name || "-"}</TableCell>
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell className="capitalize">{user.user_metadata?.role || "auditor"}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {!user.banned_until ? (
+                                  <>
+                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                    Aktif
+                                  </>
+                                ) : (
+                                  <>
+                                    <CircleX className="mr-2 h-4 w-4 text-red-500" />
+                                    Nonaktif
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => {
+                                    toast({
+                                      title: "Info",
+                                      description: "Fitur edit pengguna akan segera hadir"
+                                    });
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => handleDeleteUser(user.id)}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center">Tidak ada data pengguna yang sesuai.</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -1006,6 +1030,8 @@ export default function AdminDashboard() {
                     <Input
                       placeholder="Cari laporan audit..."
                       className="pl-8"
+                      value={searchAudit}
+                      onChange={(e) => setSearchAudit(e.target.value)}
                     />
                   </div>
                 </div>
@@ -1014,7 +1040,7 @@ export default function AdminDashboard() {
                   <div className="text-center py-8">
                     <p>Memuat data audit...</p>
                   </div>
-                ) : audits.length > 0 ? (
+                ) : filteredAudits.length > 0 ? (
                   <div className="rounded-md border">
                     <Table>
                       <TableHeader>
@@ -1028,7 +1054,7 @@ export default function AdminDashboard() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {audits.map((audit) => (
+                        {filteredAudits.map((audit) => (
                           <TableRow key={audit.id}>
                             <TableCell className="font-medium">{audit.title}</TableCell>
                             <TableCell>{audit.organization}</TableCell>
@@ -1056,7 +1082,13 @@ export default function AdminDashboard() {
                             <TableCell>{audit.user?.email || '-'}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-2">
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    window.open(`/audit-checklist/${audit.id}`, '_blank');
+                                  }}
+                                >
                                   <FileText className="mr-2 h-4 w-4" />
                                   Lihat
                                 </Button>
