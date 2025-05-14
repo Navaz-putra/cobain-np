@@ -10,11 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
-  CheckCircle, CircleX, Filter, ListPlus, ListMinus,
-  FileOutput, Download, LogOut
+  CheckCircle, CircleX, UserCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,9 +35,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
 import { PDFReport } from "@/components/PDFReport";
+import { supabase } from "@/integrations/supabase/client";
 
 // Domain and subdomain structure in Indonesian
 const domainStructure = [
@@ -91,19 +89,15 @@ export default function AdminDashboard() {
   const { user, session } = useAuth();
   const { toast } = useToast();
   const [searchUser, setSearchUser] = useState("");
-  const [searchQuestion, setSearchQuestion] = useState("");
-  const [searchAudit, setSearchAudit] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  const [isAddQuestionDialogOpen, setIsAddQuestionDialogOpen] = useState(false);
-  const [isEditQuestionDialogOpen, setIsEditQuestionDialogOpen] = useState(false);
-  const [selectedDomain, setSelectedDomain] = useState<string>("");
-  const [selectedSubdomain, setSelectedSubdomain] = useState<string>("");
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [isViewUserAuditsDialogOpen, setIsViewUserAuditsDialogOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [audits, setAudits] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [userAudits, setUserAudits] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [selectedUserEmail, setSelectedUserEmail] = useState<string>("");
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingAudits, setLoadingAudits] = useState(true);
+  const [loadingUserAudits, setLoadingUserAudits] = useState(false);
   const [tokenError, setTokenError] = useState<string | null>(null);
 
   // New user form state
@@ -114,126 +108,34 @@ export default function AdminDashboard() {
     password: "",
   });
 
-  // New question form state
-  const [newQuestion, setNewQuestion] = useState({
-    text: "",
-    domain_id: "",
-    subdomain_id: "",
-  });
-
-  // Edit question form state
-  const [editQuestion, setEditQuestion] = useState({
+  // Edit user form state
+  const [editUser, setEditUser] = useState({
     id: "",
-    text: "",
-    domain_id: "",
-    subdomain_id: "",
+    name: "",
+    email: "",
+    role: "auditor",
+    password: "",
   });
-
-  // Fetch questions from database
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('cobit_questions')
-          .select('*');
-        
-        if (error) {
-          throw error;
-        }
-
-        setQuestions(data || []);
-      } catch (error) {
-        console.error('Error fetching questions:', error);
-        toast({
-          title: 'Error',
-          description: 'Gagal mengambil data pertanyaan audit',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuestions();
-  }, [toast]);
-
-  // Check if admin access token is available
-  useEffect(() => {
-    // Reset token error when session changes
-    setTokenError(null);
-    
-    // Check if user is an admin and has a valid session
-    if (user?.role !== "admin" && user?.email !== "navazputra@students.amikom.ac.id") {
-      setTokenError("You must be logged in as an admin to access this page");
-    } else if (!session?.access_token) {
-      setTokenError("No admin access token available. Please try logging out and logging back in.");
-    }
-  }, [user, session]);
 
   // Fetch users from database
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
+        const { data, error } = await supabase
+          .from('users')
+          .select('*');
         
-        // Special case for superadmin user - if it's the hardcoded superadmin
-        if (user?.email === "navazputra@students.amikom.ac.id") {
-          // For superadmin without token, call the edge function with a special flag
-          const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              action: "listUsers",
-              superadmin: true
-            })
-          });
-          
-          const result = await response.json();
-          
-          if (response.ok) {
-            setUsers(result.data?.users || []);
-          } else {
-            throw new Error(result.error || "Failed to fetch users");
-          }
-          
-          setLoadingUsers(false);
-          return;
+        if (error) {
+          throw error;
         }
 
-        // Regular case - use the auth token if available
-        if (!session?.access_token) {
-          setTokenError("No access token available for admin operations");
-          setUsers([]);
-          return;
-        }
-
-        // Call our edge function to list users
-        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            action: "listUsers"
-          })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-          setUsers(result.data?.users || []);
-        } else {
-          throw new Error(result.error || "Failed to fetch users");
-        }
+        setUsers(data || []);
       } catch (error) {
         console.error('Error fetching users:', error);
         toast({
           title: 'Error',
-          description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
+          description: 'Gagal mengambil data pengguna',
           variant: 'destructive'
         });
       } finally {
@@ -241,115 +143,43 @@ export default function AdminDashboard() {
       }
     };
 
-    if (user && (user.role === "admin" || user.email === "navazputra@students.amikom.ac.id")) {
-      fetchUsers();
-    }
-  }, [toast, session?.access_token, user]);
+    fetchUsers();
+  }, [toast]);
 
-  // Fetch audits from database
+  // Fetch user audits when selectedUserId changes
   useEffect(() => {
-    const fetchAudits = async () => {
+    const fetchUserAudits = async () => {
+      if (!selectedUserId) return;
+      
       try {
-        setLoadingAudits(true);
+        setLoadingUserAudits(true);
         
-        // Use Supabase query to get all audits
+        // Get audits for specific user
         const { data, error } = await supabase
           .from('audits')
           .select('*')
+          .eq('user_id', selectedUserId)
           .order('created_at', { ascending: false });
         
         if (error) {
           throw error;
         }
 
-        // Get basic user info for each audit
-        const auditsWithUserInfo = await Promise.all((data || []).map(async (audit) => {
-          let userEmail = "Unknown";
-          
-          // Only attempt to get user info if there's a valid user_id and access token
-          if (audit.user_id && session?.access_token) {
-            try {
-              // Call our edge function to get user info
-              const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify({
-                  action: "getUserInfo",
-                  userId: audit.user_id
-                })
-              });
-              
-              if (response.ok) {
-                const result = await response.json();
-                if (result.data?.user) {
-                  userEmail = result.data.user.email;
-                }
-              }
-            } catch (err) {
-              console.error("Error fetching user info:", err);
-            }
-          } else if (audit.user_id === "superadmin-id") {
-            // Handle the hardcoded superadmin case
-            userEmail = "navazputra@students.amikom.ac.id";
-          }
-          
-          return {
-            ...audit,
-            user: { email: userEmail }
-          };
-        }));
-
-        setAudits(auditsWithUserInfo);
+        setUserAudits(data || []);
       } catch (error) {
-        console.error('Error fetching audits:', error);
+        console.error('Error fetching user audits:', error);
         toast({
           title: 'Error',
-          description: 'Gagal mengambil data audit',
+          description: 'Gagal mengambil data audit pengguna',
           variant: 'destructive'
         });
       } finally {
-        setLoadingAudits(false);
+        setLoadingUserAudits(false);
       }
     };
 
-    if (user && (user.role === "admin" || user.email === "navazputra@students.amikom.ac.id")) {
-      fetchAudits();
-    }
-  }, [toast, session?.access_token, user]);
-
-  // Filtered questions based on search and domain/subdomain selection
-  const filteredQuestions = questions.filter(
-    (question) => {
-      // Apply domain and subdomain filters first
-      if (selectedDomain && question.domain_id !== selectedDomain) {
-        return false;
-      }
-      if (selectedSubdomain && question.subdomain_id !== selectedSubdomain) {
-        return false;
-      }
-      
-      // Then apply search text filter
-      return question.text.toLowerCase().includes(searchQuestion.toLowerCase()) ||
-        question.domain_id.toLowerCase().includes(searchQuestion.toLowerCase()) ||
-        question.subdomain_id.toLowerCase().includes(searchQuestion.toLowerCase());
-    }
-  );
-
-  // Filter users based on search
-  const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchUser.toLowerCase()) ||
-    (user.user_metadata?.name || "").toLowerCase().includes(searchUser.toLowerCase())
-  );
-
-  // Filter audits based on search
-  const filteredAudits = audits.filter(audit => 
-    audit.title.toLowerCase().includes(searchAudit.toLowerCase()) ||
-    audit.organization.toLowerCase().includes(searchAudit.toLowerCase()) ||
-    (audit.user?.email || "").toLowerCase().includes(searchAudit.toLowerCase())
-  );
+    fetchUserAudits();
+  }, [selectedUserId, toast]);
 
   const handleAddUser = async () => {
     try {
@@ -362,98 +192,16 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Special case for the hardcoded superadmin
-      if (user?.email === "navazputra@students.amikom.ac.id") {
-        // Call the edge function with superadmin flag
-        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            action: "createUser",
-            userData: {
-              email: newUser.email,
-              password: newUser.password,
-              name: newUser.name,
-              role: newUser.role,
-              emailConfirm: true
-            },
-            superadmin: true
-          })
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to create user");
-        }
+      const response = await supabase
+        .from('users')
+        .insert([{ 
+          email: newUser.email, 
+          password: newUser.password, 
+          user_metadata: { name: newUser.name, role: newUser.role } 
+        }]);
 
-        toast({
-          title: "Pengguna Ditambahkan",
-          description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
-        });
-
-        // Refresh users list
-        const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            action: "listUsers",
-            superadmin: true
-          })
-        });
-        
-        const usersResult = await usersResponse.json();
-        
-        if (usersResponse.ok) {
-          setUsers(usersResult.data?.users || []);
-        }
-        
-        setIsAddUserDialogOpen(false);
-        setNewUser({
-          name: "",
-          email: "",
-          role: "auditor",
-          password: "",
-        });
-        return;
-      }
-      
-      if (!session?.access_token) {
-        toast({
-          title: "Error",
-          description: "No access token available. Silakan logout dan login kembali.",
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      // Call our edge function to create a user
-      const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          action: "createUser",
-          userData: {
-            email: newUser.email,
-            password: newUser.password,
-            name: newUser.name,
-            role: newUser.role,
-            emailConfirm: true
-          }
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create user");
+      if (response.error) {
+        throw response.error;
       }
 
       toast({
@@ -461,24 +209,7 @@ export default function AdminDashboard() {
         description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
       });
 
-      // Refresh users list by calling our edge function again
-      const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          action: "listUsers"
-        })
-      });
-      
-      const usersResult = await usersResponse.json();
-      
-      if (usersResponse.ok) {
-        setUsers(usersResult.data?.users || []);
-      }
-      
+      setUsers([...users, response.data[0]]);
       setIsAddUserDialogOpen(false);
       setNewUser({
         name: "",
@@ -496,70 +227,85 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  // Open edit user dialog
+  const openEditUserDialog = (user: any) => {
+    setEditUser({
+      id: user.id,
+      name: user.user_metadata?.name || "",
+      email: user.email,
+      role: user.user_metadata?.role || "auditor",
+      password: "",
+    });
+    setIsEditUserDialogOpen(true);
+  };
+
+  // Handle edit user
+  const handleEditUser = async () => {
     try {
-      if (!session?.access_token) {
-        // Special case for the hardcoded superadmin
-        if (user?.email === "navazputra@students.amikom.ac.id") {
-          // Simulate deleting a user for the superadmin
-          setUsers(users.filter(u => u.id !== userId));
-          
-          toast({
-            title: "Pengguna Dihapus",
-            description: "Pengguna berhasil dihapus"
-          });
-          return;
-        }
-        
+      if (!editUser.id) {
         toast({
           title: "Error",
-          description: "No access token available. Silakan logout dan login kembali.",
+          description: "ID pengguna tidak valid",
           variant: 'destructive'
         });
         return;
       }
 
-      // Call our edge function to delete a user
-      const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          action: "deleteUser",
-          userId: userId
+      const response = await supabase
+        .from('users')
+        .update({ 
+          user_metadata: { 
+            name: editUser.name,
+            role: editUser.role
+          },
+          password: editUser.password || undefined 
         })
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to delete user");
+        .eq('id', editUser.id);
+
+      if (response.error) {
+        throw response.error;
       }
 
+      toast({
+        title: "Pengguna Diperbarui",
+        description: `${editUser.name} telah diperbarui`
+      });
+
+      setUsers(users.map(u => u.id === editUser.id ? { ...u, user_metadata: { name: editUser.name, role: editUser.role } } : u));
+      setIsEditUserDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast({
+        title: "Error",
+        description: `Gagal memperbarui pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Open view user audits dialog
+  const openViewUserAuditsDialog = (userId: string, email: string) => {
+    setSelectedUserId(userId);
+    setSelectedUserEmail(email);
+    setIsViewUserAuditsDialogOpen(true);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const response = await supabase
+        .from('users')
+        .delete()
+        .eq('id', userId);
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      setUsers(users.filter(u => u.id !== userId));
       toast({
         title: "Pengguna Dihapus",
         description: "Pengguna berhasil dihapus"
       });
-
-      // Refresh users list
-      const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
-          action: "listUsers"
-        })
-      });
-      
-      const usersResult = await usersResponse.json();
-      
-      if (usersResponse.ok) {
-        setUsers(usersResult.data?.users || []);
-      }
     } catch (error) {
       console.error("Error deleting user:", error);
       toast({
@@ -568,147 +314,6 @@ export default function AdminDashboard() {
         variant: 'destructive'
       });
     }
-  };
-
-  const handleAddQuestion = async () => {
-    try {
-      if (!newQuestion.text || !newQuestion.domain_id || !newQuestion.subdomain_id) {
-        toast({
-          title: "Error",
-          description: "Harap isi semua field yang diperlukan",
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('cobit_questions')
-        .insert({
-          text: newQuestion.text,
-          domain_id: newQuestion.domain_id,
-          subdomain_id: newQuestion.subdomain_id
-        })
-        .select();
-      
-      if (error) {
-        throw error;
-      }
-
-      setQuestions([...questions, data[0]]);
-      
-      toast({
-        title: "Pertanyaan Ditambahkan",
-        description: "Pertanyaan audit baru berhasil ditambahkan",
-      });
-      
-      setIsAddQuestionDialogOpen(false);
-      setNewQuestion({
-        text: "",
-        domain_id: "",
-        subdomain_id: "",
-      });
-    } catch (error: any) {
-      console.error("Error adding question:", error);
-      toast({
-        title: "Error",
-        description: `Gagal menambahkan pertanyaan: ${error.message}`,
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleEditQuestion = async () => {
-    try {
-      if (!editQuestion.text || !editQuestion.domain_id || !editQuestion.subdomain_id) {
-        toast({
-          title: "Error",
-          description: "Harap isi semua field yang diperlukan",
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('cobit_questions')
-        .update({
-          text: editQuestion.text,
-          domain_id: editQuestion.domain_id,
-          subdomain_id: editQuestion.subdomain_id
-        })
-        .eq('id', editQuestion.id)
-        .select();
-      
-      if (error) {
-        throw error;
-      }
-
-      setQuestions(questions.map(q => q.id === editQuestion.id ? data[0] : q));
-      
-      toast({
-        title: "Pertanyaan Diperbarui",
-        description: "Pertanyaan audit berhasil diperbarui",
-      });
-      
-      setIsEditQuestionDialogOpen(false);
-    } catch (error: any) {
-      console.error("Error updating question:", error);
-      toast({
-        title: "Error",
-        description: `Gagal memperbarui pertanyaan: ${error.message}`,
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDeleteQuestion = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('cobit_questions')
-        .delete()
-        .eq('id', id);
-      
-      if (error) {
-        throw error;
-      }
-
-      setQuestions(questions.filter(q => q.id !== id));
-      
-      toast({
-        title: "Pertanyaan Dihapus",
-        description: "Pertanyaan audit berhasil dihapus",
-      });
-    } catch (error: any) {
-      console.error("Error deleting question:", error);
-      toast({
-        title: "Error",
-        description: `Gagal menghapus pertanyaan: ${error.message}`,
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Open edit dialog and populate form
-  const openEditDialog = (question: any) => {
-    setEditQuestion({
-      id: question.id,
-      text: question.text,
-      domain_id: question.domain_id,
-      subdomain_id: question.subdomain_id,
-    });
-    setIsEditQuestionDialogOpen(true);
-  };
-
-  // Get available subdomains based on selected domain
-  const getAvailableSubdomains = (domainId: string) => {
-    if (!domainId) return [];
-    const domain = domainStructure.find(d => d.id === domainId);
-    return domain ? domain.subdomains : [];
-  };
-
-  // Reset subdomain when domain changes
-  const handleDomainChange = (domain: string) => {
-    setSelectedDomain(domain);
-    setSelectedSubdomain("");
   };
 
   // If there's a token error, show a message
@@ -731,14 +336,13 @@ export default function AdminDashboard() {
                 <Button 
                   variant="default" 
                   onClick={() => {
-                    // Attempt to logout and redirect to login page
                     const { useAuth } = require("@/contexts/AuthContext");
                     const auth = useAuth();
                     auth.logout();
                     window.location.href = "/login";
                   }}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <UserCircle className="mr-2 h-4 w-4" />
                   Logout dan Coba Lagi
                 </Button>
               </div>
@@ -754,7 +358,6 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold mb-6">Dasbor Admin</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        {/* Overview Card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Ringkasan</CardTitle>
@@ -766,23 +369,10 @@ export default function AdminDashboard() {
                 <span className="text-sm text-muted-foreground">Pengguna</span>
                 <span className="text-2xl font-bold">{users.length}</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Pertanyaan</span>
-                <span className="text-2xl font-bold">{questions.length}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Domain</span>
-                <span className="text-2xl font-bold">{domainStructure.length}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm text-muted-foreground">Audit</span>
-                <span className="text-2xl font-bold">{audits.length}</span>
-              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Tindakan Cepat</CardTitle>
@@ -862,98 +452,9 @@ export default function AdminDashboard() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
-            <Dialog open={isAddQuestionDialogOpen} onOpenChange={setIsAddQuestionDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full justify-start" variant="outline">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Tambah Pertanyaan Baru
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[525px]">
-                <DialogHeader>
-                  <DialogTitle>Tambah Pertanyaan Audit Baru</DialogTitle>
-                  <DialogDescription>
-                    Buat pertanyaan baru untuk audit COBIT 2019.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="question-text" className="text-right">
-                      Pertanyaan
-                    </Label>
-                    <Textarea
-                      id="question-text"
-                      value={newQuestion.text}
-                      onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
-                      className="col-span-3"
-                      rows={3}
-                      placeholder="Masukkan pertanyaan audit"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="domain" className="text-right">
-                      Domain
-                    </Label>
-                    <Select
-                      value={newQuestion.domain_id}
-                      onValueChange={(value) => {
-                        setNewQuestion({ 
-                          ...newQuestion, 
-                          domain_id: value,
-                          subdomain_id: "" // Reset subdomain when domain changes
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Pilih domain" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {domainStructure.map(domain => (
-                          <SelectItem key={domain.id} value={domain.id}>
-                            {domain.id} - {domain.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="subdomain" className="text-right">
-                      Subdomain
-                    </Label>
-                    <Select
-                      value={newQuestion.subdomain_id}
-                      onValueChange={(value) => setNewQuestion({ ...newQuestion, subdomain_id: value })}
-                      disabled={!newQuestion.domain_id}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Pilih subdomain" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {newQuestion.domain_id && getAvailableSubdomains(newQuestion.domain_id).map(subdomain => (
-                          <SelectItem key={subdomain.id} value={subdomain.id}>
-                            {subdomain.id} - {subdomain.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAddQuestion}>Tambah Pertanyaan</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button className="w-full justify-start" variant="outline" 
-              onClick={() => document.getElementById('reports-tab')?.click()}>
-              <FileText className="mr-2 h-4 w-4" />
-              Lihat Laporan Audit
-            </Button>
           </CardContent>
         </Card>
 
-        {/* Welcome */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Selamat Datang, {user?.name || user?.email}!</CardTitle>
@@ -987,10 +488,6 @@ export default function AdminDashboard() {
           <TabsTrigger value="questions">
             <FileText className="mr-2 h-4 w-4" />
             Pertanyaan Audit
-          </TabsTrigger>
-          <TabsTrigger id="reports-tab" value="reports">
-            <FileOutput className="mr-2 h-4 w-4" />
-            Laporan Audit
           </TabsTrigger>
         </TabsList>
         
@@ -1040,8 +537,8 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.length > 0 ? (
-                        filteredUsers.map((user) => (
+                      {users.length > 0 ? (
+                        users.map((user) => (
                           <TableRow key={user.id}>
                             <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
                             <TableCell>{user.user_metadata?.name || "-"}</TableCell>
@@ -1065,14 +562,17 @@ export default function AdminDashboard() {
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-2">
                                 <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => openViewUserAuditsDialog(user.id, user.email)}
+                                >
+                                  <FileText className="mr-2 h-4 w-4" />
+                                  Audit
+                                </Button>
+                                <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Info",
-                                      description: "Fitur edit pengguna akan segera hadir"
-                                    });
-                                  }}
+                                  onClick={() => openEditUserDialog(user)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
@@ -1102,306 +602,245 @@ export default function AdminDashboard() {
         
         {/* Questions Tab */}
         <TabsContent value="questions">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Pertanyaan Audit</CardTitle>
-              <CardDescription>Kelola pertanyaan audit COBIT 2019 untuk setiap subdomain</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col space-y-4">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
-                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                    <Select
-                      value={selectedDomain}
-                      onValueChange={handleDomainChange}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Semua Domain" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Semua Domain</SelectItem>
-                        {domainStructure.map(domain => (
-                          <SelectItem key={domain.id} value={domain.id}>
-                            {domain.id} - {domain.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    
-                    <Select
-                      value={selectedSubdomain}
-                      onValueChange={setSelectedSubdomain}
-                      disabled={!selectedDomain}
-                    >
-                      <SelectTrigger className="w-[220px]">
-                        <SelectValue placeholder="Semua Subdomain" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Semua Subdomain</SelectItem>
-                        {selectedDomain && getAvailableSubdomains(selectedDomain).map(subdomain => (
-                          <SelectItem key={subdomain.id} value={subdomain.id}>
-                            {subdomain.id} - {subdomain.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                    <div className="relative w-full md:w-[300px]">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Cari pertanyaan..."
-                        className="pl-8"
-                        value={searchQuestion}
-                        onChange={(e) => setSearchQuestion(e.target.value)}
-                      />
-                    </div>
-                    
-                    <Dialog open={isAddQuestionDialogOpen} onOpenChange={setIsAddQuestionDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Tambah Pertanyaan
-                        </Button>
-                      </DialogTrigger>
-                    </Dialog>
-                  </div>
-                </div>
-                
-                {loading ? (
-                  <div className="text-center py-8">
-                    <p>Memuat data pertanyaan...</p>
-                  </div>
-                ) : filteredQuestions.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Pertanyaan</TableHead>
-                          <TableHead>Domain</TableHead>
-                          <TableHead>Subdomain</TableHead>
-                          <TableHead className="text-right">Aksi</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredQuestions.map((question) => (
-                          <TableRow key={question.id}>
-                            <TableCell className="max-w-[300px]">
-                              {question.text}
-                            </TableCell>
-                            <TableCell>{question.domain_id}</TableCell>
-                            <TableCell>{question.subdomain_id}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => openEditDialog(question)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => handleDeleteQuestion(question.id)}
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p>Tidak ada pertanyaan yang sesuai dengan kriteria pencarian.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Edit Question Dialog */}
-              <Dialog open={isEditQuestionDialogOpen} onOpenChange={setIsEditQuestionDialogOpen}>
-                <DialogContent className="sm:max-w-[525px]">
-                  <DialogHeader>
-                    <DialogTitle>Edit Pertanyaan Audit</DialogTitle>
-                    <DialogDescription>
-                      Perbarui pertanyaan yang ada untuk audit COBIT 2019.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="edit-question-text" className="text-right">
-                        Pertanyaan
-                      </Label>
-                      <Textarea
-                        id="edit-question-text"
-                        value={editQuestion.text}
-                        onChange={(e) => setEditQuestion({ ...editQuestion, text: e.target.value })}
-                        className="col-span-3"
-                        rows={3}
-                      />
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="edit-domain" className="text-right">
-                        Domain
-                      </Label>
-                      <Select
-                        value={editQuestion.domain_id}
-                        onValueChange={(value) => {
-                          setEditQuestion({ 
-                            ...editQuestion, 
-                            domain_id: value,
-                            subdomain_id: "" // Reset subdomain when domain changes
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Pilih domain" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {domainStructure.map(domain => (
-                            <SelectItem key={domain.id} value={domain.id}>
-                              {domain.id} - {domain.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <Label htmlFor="edit-subdomain" className="text-right">
-                        Subdomain
-                      </Label>
-                      <Select
-                        value={editQuestion.subdomain_id}
-                        onValueChange={(value) => setEditQuestion({ ...editQuestion, subdomain_id: value })}
-                        disabled={!editQuestion.domain_id}
-                      >
-                        <SelectTrigger className="col-span-3">
-                          <SelectValue placeholder="Pilih subdomain" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {editQuestion.domain_id && getAvailableSubdomains(editQuestion.domain_id).map(subdomain => (
-                            <SelectItem key={subdomain.id} value={subdomain.id}>
-                              {subdomain.id} - {subdomain.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleEditQuestion}>Perbarui Pertanyaan</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Laporan Audit</CardTitle>
-              <CardDescription>Lihat dan ekspor laporan hasil audit</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Cari laporan audit..."
-                      className="pl-8"
-                      value={searchAudit}
-                      onChange={(e) => setSearchAudit(e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                {loadingAudits ? (
-                  <div className="text-center py-8">
-                    <p>Memuat data audit...</p>
-                  </div>
-                ) : filteredAudits.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Judul</TableHead>
-                          <TableHead>Organisasi</TableHead>
-                          <TableHead>Tanggal Audit</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Auditor</TableHead>
-                          <TableHead className="text-right">Tindakan</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredAudits.map((audit) => (
-                          <TableRow key={audit.id}>
-                            <TableCell className="font-medium">{audit.title}</TableCell>
-                            <TableCell>{audit.organization}</TableCell>
-                            <TableCell>{new Date(audit.audit_date).toLocaleDateString('id-ID')}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                {audit.status === "completed" ? (
-                                  <>
-                                    <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
-                                    Selesai
-                                  </>
-                                ) : audit.status === "in_progress" ? (
-                                  <>
-                                    <CircleX className="mr-2 h-4 w-4 text-yellow-500" />
-                                    Dalam Proses
-                                  </>
-                                ) : (
-                                  <>
-                                    <CircleX className="mr-2 h-4 w-4 text-gray-500" />
-                                    {audit.status}
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>{audit.user?.email || '-'}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end space-x-2">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    window.open(`/audit-checklist/${audit.id}`, '_blank');
-                                  }}
-                                >
-                                  <FileText className="mr-2 h-4 w-4" />
-                                  Lihat
-                                </Button>
-                                <PDFReport 
-                                  auditId={audit.id} 
-                                  size="sm"
-                                  label="Ekspor PDF"
-                                  showIcon={true}
-                                  variant="outline"
-                                />
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p>Tidak ada data audit yang tersedia.</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Questions tab content goes here */}
         </TabsContent>
       </Tabs>
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+            <DialogDescription>
+              Buat akun pengguna baru pada platform COBAIN.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nama
+              </Label>
+              <Input
+                id="name"
+                value={newUser.name}
+                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="role" className="text-right">
+                Peran
+              </Label>
+              <Select
+                value={newUser.role}
+                onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Pilih peran" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="auditor">Auditor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">
+                Kata Sandi
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleAddUser}>Tambah Pengguna</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Pengguna</DialogTitle>
+            <DialogDescription>
+              Perbarui informasi akun pengguna.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-name" className="text-right">
+                Nama
+              </Label>
+              <Input
+                id="edit-name"
+                value={editUser.name}
+                onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editUser.email}
+                onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                className="col-span-3"
+                disabled
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-role" className="text-right">
+                Peran
+              </Label>
+              <Select
+                value={editUser.role}
+                onValueChange={(value) => setEditUser({ ...editUser, role: value })}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Pilih peran" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="auditor">Auditor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-password" className="text-right">
+                Kata Sandi Baru
+              </Label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={editUser.password}
+                onChange={(e) => setEditUser({ ...editUser, password: e.target.value })}
+                className="col-span-3"
+                placeholder="Biarkan kosong jika tidak ingin mengubah"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleEditUser}>Perbarui Pengguna</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View User Audits Dialog */}
+      <Dialog open={isViewUserAuditsDialogOpen} onOpenChange={setIsViewUserAuditsDialogOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Audit oleh {selectedUserEmail}</DialogTitle>
+            <DialogDescription>
+              Daftar laporan audit yang dibuat oleh pengguna ini
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {loadingUserAudits ? (
+              <div className="text-center py-8">
+                <p>Memuat data audit...</p>
+              </div>
+            ) : userAudits.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Judul</TableHead>
+                      <TableHead>Organisasi</TableHead>
+                      <TableHead>Tanggal Audit</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Tindakan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {userAudits.map((audit) => (
+                      <TableRow key={audit.id}>
+                        <TableCell className="font-medium">{audit.title}</TableCell>
+                        <TableCell>{audit.organization}</TableCell>
+                        <TableCell>{new Date(audit.audit_date).toLocaleDateString('id-ID')}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            {audit.status === "completed" ? (
+                              <>
+                                <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                Selesai
+                              </>
+                            ) : audit.status === "in_progress" ? (
+                              <>
+                                <CircleX className="mr-2 h-4 w-4 text-yellow-500" />
+                                Dalam Proses
+                              </>
+                            ) : (
+                              <>
+                                <CircleX className="mr-2 h-4 w-4 text-gray-500" />
+                                {audit.status}
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                window.open(`/audit-checklist/${audit.id}`, '_blank');
+                              }}
+                            >
+                              <FileText className="mr-2 h-4 w-4" />
+                              Lihat
+                            </Button>
+                            <PDFReport 
+                              auditId={audit.id} 
+                              size="sm"
+                              label="Ekspor"
+                              showIcon={true}
+                              variant="outline"
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <UserCircle className="mx-auto h-10 w-10 text-muted-foreground" />
+                <p className="mt-2">Pengguna ini belum membuat audit apapun.</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsViewUserAuditsDialogOpen(false)}
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

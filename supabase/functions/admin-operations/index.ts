@@ -78,6 +78,41 @@ serve(async (req) => {
         error = response.error;
         break;
 
+      case 'updateUser':
+        // Check if all required data is present
+        if (!userData.id) {
+          return new Response(
+            JSON.stringify({ error: 'User ID required' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+
+        // Prepare update data
+        const updateData: any = {
+          user_metadata: { 
+            name: userData.name,
+            role: userData.role
+          }
+        };
+
+        // Only include password if provided
+        if (userData.password) {
+          updateData.password = userData.password;
+        }
+
+        // Update user
+        const updateResponse = await supabaseAdmin.auth.admin.updateUserById(
+          userData.id,
+          updateData
+        );
+
+        data = updateResponse.data;
+        error = updateResponse.error;
+        break;
+
       case 'deleteUser':
         const deleteResponse = await supabaseAdmin.auth.admin.deleteUser(userId);
         data = deleteResponse.data;
