@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
   CheckCircle, CircleX, UserCircle
@@ -233,7 +233,7 @@ export default function AdminDashboard() {
             superadmin: true,
             email: 'navazputra@students.amikom.ac.id',
             name: newUser.name,
-            email: newUser.email,
+            email: newUser.email, // This is the duplicate property causing the error
             password: newUser.password,
             role: newUser.role
           })
