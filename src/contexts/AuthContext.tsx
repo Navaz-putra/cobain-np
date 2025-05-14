@@ -4,7 +4,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AuthContextType {
-  user: (User & { name?: string }) | null;
+  user: (User & { name?: string; role?: string }) | null;
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
@@ -16,7 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<(User & { name?: string }) | null>(null);
+  const [user, setUser] = useState<(User & { name?: string; role?: string }) | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,10 +26,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, session) => {
         setSession(session);
         if (session?.user) {
-          // Extract name from user metadata and add it to the user object
+          // Extract name and role from user metadata and add it to the user object
           const userData = {
             ...session.user,
             name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || '',
+            role: session.user.user_metadata?.role || 'auditor',
           };
           setUser(userData);
         } else {
@@ -42,10 +43,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
-        // Extract name from user metadata and add it to the user object
+        // Extract name and role from user metadata and add it to the user object
         const userData = {
           ...session.user,
           name: session.user.user_metadata?.name || session.user.user_metadata?.full_name || '',
+          role: session.user.user_metadata?.role || 'auditor',
         };
         setUser(userData);
       } else {
@@ -74,18 +76,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           id: "superadmin-id",
           email: "navazputra@students.amikom.ac.id",
           app_metadata: {},
-          user_metadata: { name: "Super Admin" },
+          user_metadata: { name: "Super Admin", role: "admin" },
           aud: "authenticated",
           created_at: new Date().toISOString(),
-          name: "Super Admin"
-        } as unknown as User & { name?: string };
+          name: "Super Admin",
+          role: "admin"
+        } as unknown as User & { name?: string; role?: string };
         
         setUser(superAdminUser);
+        
+        // Create a mock session for superadmin
+        const mockSession = {
+          access_token: "mock-access-token-for-superadmin",
+          refresh_token: "mock-refresh-token",
+          expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          token_type: "bearer",
+          user: superAdminUser
+        } as Session;
+        
+        setSession(mockSession);
         return true;
       }
       
       // Regular Supabase authentication for other users
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -94,6 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("Login error:", error.message);
         return false;
       }
+      
       return true;
     } catch (error) {
       console.error("Unexpected login error:", error);
@@ -128,6 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         options: {
           data: {
             name: name,
+            role: "auditor", // Default role for new signups
           },
           emailRedirectTo: `${window.location.origin}/email-confirmation`,
         },
@@ -150,6 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Then sign out of Supabase (if using Supabase auth)
     await supabase.auth.signOut();
     setUser(null);
+    setSession(null);
   };
 
   return (

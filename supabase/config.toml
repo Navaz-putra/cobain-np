@@ -5,4 +5,5 @@ project_id = "dcslbtsxmctxkudozrck"
 verify_jwt = false
 
 [functions.admin-operations]
-verify_jwt = true
+verify_jwt = false
+

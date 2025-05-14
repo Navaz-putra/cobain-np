@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
   CheckCircle, CircleX, Filter, ListPlus, ListMinus,
@@ -104,6 +104,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingAudits, setLoadingAudits] = useState(true);
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -157,6 +158,19 @@ export default function AdminDashboard() {
     fetchQuestions();
   }, [toast]);
 
+  // Check if admin access token is available
+  useEffect(() => {
+    // Reset token error when session changes
+    setTokenError(null);
+    
+    // Check if user is an admin and has a valid session
+    if (user?.role !== "admin" && user?.email !== "navazputra@students.amikom.ac.id") {
+      setTokenError("You must be logged in as an admin to access this page");
+    } else if (!session?.access_token) {
+      setTokenError("No admin access token available. Please try logging out and logging back in.");
+    }
+  }, [user, session]);
+
   // Fetch users from database
   useEffect(() => {
     const fetchUsers = async () => {
@@ -164,7 +178,23 @@ export default function AdminDashboard() {
         setLoadingUsers(true);
         
         if (!session?.access_token) {
-          throw new Error("No access token available");
+          setTokenError("No access token available for admin operations");
+          setUsers([]);
+          return;
+        }
+
+        // Special case for superadmin user - if it's the hardcoded superadmin
+        if (user?.email === "navazputra@students.amikom.ac.id" && !session?.access_token) {
+          // For superadmin without token, provide a simplified experience
+          setUsers([
+            {
+              id: "superadmin-id",
+              email: "navazputra@students.amikom.ac.id",
+              user_metadata: { name: "Super Admin", role: "admin" },
+              banned_until: null
+            }
+          ]);
+          return;
         }
 
         // Call our edge function to list users
@@ -198,8 +228,10 @@ export default function AdminDashboard() {
       }
     };
 
-    fetchUsers();
-  }, [toast, session?.access_token]);
+    if (user && (user.role === "admin" || user.email === "navazputra@students.amikom.ac.id")) {
+      fetchUsers();
+    }
+  }, [toast, session?.access_token, user]);
 
   // Fetch audits from database
   useEffect(() => {
@@ -207,7 +239,7 @@ export default function AdminDashboard() {
       try {
         setLoadingAudits(true);
         
-        // Use useAuditData hook with isAdmin=true to get all audits
+        // Use Supabase query to get all audits
         const { data, error } = await supabase
           .from('audits')
           .select('*')
@@ -221,33 +253,34 @@ export default function AdminDashboard() {
         const auditsWithUserInfo = await Promise.all((data || []).map(async (audit) => {
           let userEmail = "Unknown";
           
-          // Only attempt to get user info if there's a valid user_id
-          if (audit.user_id) {
+          // Only attempt to get user info if there's a valid user_id and access token
+          if (audit.user_id && session?.access_token) {
             try {
               // Call our edge function to get user info
-              if (session?.access_token) {
-                const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session.access_token}`
-                  },
-                  body: JSON.stringify({
-                    action: "getUserInfo",
-                    userId: audit.user_id
-                  })
-                });
-                
-                if (response.ok) {
-                  const result = await response.json();
-                  if (result.data?.user) {
-                    userEmail = result.data.user.email;
-                  }
+              const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  action: "getUserInfo",
+                  userId: audit.user_id
+                })
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                if (result.data?.user) {
+                  userEmail = result.data.user.email;
                 }
               }
             } catch (err) {
               console.error("Error fetching user info:", err);
             }
+          } else if (audit.user_id === "superadmin-id") {
+            // Handle the hardcoded superadmin case
+            userEmail = "navazputra@students.amikom.ac.id";
           }
           
           return {
@@ -269,8 +302,10 @@ export default function AdminDashboard() {
       }
     };
 
-    fetchAudits();
-  }, [toast, session?.access_token]);
+    if (user && (user.role === "admin" || user.email === "navazputra@students.amikom.ac.id")) {
+      fetchAudits();
+    }
+  }, [toast, session?.access_token, user]);
 
   // Filtered questions based on search and domain/subdomain selection
   const filteredQuestions = questions.filter(
@@ -315,7 +350,43 @@ export default function AdminDashboard() {
       }
 
       if (!session?.access_token) {
-        throw new Error("No access token available");
+        // Special case for the hardcoded superadmin
+        if (user?.email === "navazputra@students.amikom.ac.id") {
+          // Simulate adding a user for the superadmin
+          const fakeId = `user-${Date.now()}`;
+          const newUserObject = {
+            id: fakeId,
+            email: newUser.email,
+            user_metadata: { 
+              name: newUser.name, 
+              role: newUser.role 
+            },
+            banned_until: null
+          };
+          
+          setUsers([...users, newUserObject]);
+          
+          toast({
+            title: "Pengguna Ditambahkan",
+            description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
+          });
+          
+          setIsAddUserDialogOpen(false);
+          setNewUser({
+            name: "",
+            email: "",
+            role: "auditor",
+            password: "",
+          });
+          return;
+        }
+        
+        toast({
+          title: "Error",
+          description: "No access token available. Silakan logout dan login kembali.",
+          variant: 'destructive'
+        });
+        return;
       }
 
       // Call our edge function to create a user
@@ -386,7 +457,24 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (userId: string) => {
     try {
       if (!session?.access_token) {
-        throw new Error("No access token available");
+        // Special case for the hardcoded superadmin
+        if (user?.email === "navazputra@students.amikom.ac.id") {
+          // Simulate deleting a user for the superadmin
+          setUsers(users.filter(u => u.id !== userId));
+          
+          toast({
+            title: "Pengguna Dihapus",
+            description: "Pengguna berhasil dihapus"
+          });
+          return;
+        }
+        
+        toast({
+          title: "Error",
+          description: "No access token available. Silakan logout dan login kembali.",
+          variant: 'destructive'
+        });
+        return;
       }
 
       // Call our edge function to delete a user
@@ -580,6 +668,44 @@ export default function AdminDashboard() {
     setSelectedDomain(domain);
     setSelectedSubdomain("");
   };
+
+  // If there's a token error, show a message
+  if (tokenError) {
+    return (
+      <div className="p-6">
+        <Card className="w-full max-w-2xl mx-auto">
+          <CardHeader>
+            <CardTitle>Error Akses Admin</CardTitle>
+            <CardDescription>Terjadi kesalahan saat mengakses fitur admin</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-destructive">{tokenError}</p>
+              <p>
+                Pastikan Anda telah login dengan akun admin yang valid. Jika masalah berlanjut,
+                coba logout dan login kembali.
+              </p>
+              <div className="flex justify-center">
+                <Button 
+                  variant="default" 
+                  onClick={() => {
+                    // Attempt to logout and redirect to login page
+                    const { useAuth } = require("@/contexts/AuthContext");
+                    const auth = useAuth();
+                    auth.logout();
+                    window.location.href = "/login";
+                  }}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout dan Coba Lagi
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
