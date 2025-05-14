@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react"; 
+import { Download, Loader2 } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PDFReportProps {
   auditId: string;
@@ -61,7 +61,11 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       onClick={handleGenerateReport}
       disabled={disabled || isGenerating}
     >
-      {showIcon && <Download className={`${isGenerating ? 'animate-pulse' : ''} mr-2 h-4 w-4`} />}
+      {showIcon && (
+        isGenerating ? 
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
+          <Download className="mr-2 h-4 w-4" />
+      )}
       {isGenerating ? "Sedang menghasilkan..." : label}
     </Button>
   );

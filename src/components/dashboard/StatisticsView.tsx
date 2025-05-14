@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 import { Progress } from "@/components/ui/progress";
 
 interface StatisticsProps {
@@ -14,18 +14,36 @@ export const StatisticsView: React.FC<StatisticsProps> = ({ audits, mockAudits =
   // Calculate statistics
   const totalAudits = auditsToUse.length;
   const completedAudits = auditsToUse.filter(a => a.status === "completed").length;
-  const inProgressAudits = auditsToUse.filter(a => a.status === "in-progress").length;
+  const inProgressAudits = auditsToUse.filter(a => a.status === "in_progress" || a.status === "in-progress").length;
   
   // Calculate percentages safely to avoid division by zero
   const completedPercentage = totalAudits > 0 ? (completedAudits / totalAudits) * 100 : 0;
   const inProgressPercentage = totalAudits > 0 ? (inProgressAudits / totalAudits) * 100 : 0;
   
-  // Domain data for visualization
-  const domainCounts = ['EDM', 'APO', 'BAI', 'DSS', 'MEA'].map(domain => {
-    const auditCount = auditsToUse.filter(a => a.domains?.includes(domain)).length;
-    const percentage = totalAudits > 0 ? (auditCount / totalAudits) * 100 : 0;
-    return { domain, count: auditCount, percentage };
-  });
+  // Calculate domain coverage data
+  const domainCounts = useMemo(() => {
+    // Get all selected domains from all audits
+    const allDomains = auditsToUse.flatMap(audit => {
+      const domains = audit.audit_domains || [];
+      return domains
+        .filter(domain => domain.selected)
+        .map(domain => domain.domain_id);
+    });
+    
+    // Count occurrences of each domain
+    const domainOccurrences = allDomains.reduce((acc, domain) => {
+      acc[domain] = (acc[domain] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Create domain coverage data with calculated percentages
+    return ['EDM', 'APO', 'BAI', 'DSS', 'MEA'].map(domain => {
+      const auditCount = domainOccurrences[domain] || 0;
+      const maxPossible = totalAudits; // Maximum would be if all audits include this domain
+      const percentage = maxPossible > 0 ? (auditCount / maxPossible) * 100 : 0;
+      return { domain, count: auditCount, percentage };
+    });
+  }, [auditsToUse, totalAudits]);
   
   return (
     <div>

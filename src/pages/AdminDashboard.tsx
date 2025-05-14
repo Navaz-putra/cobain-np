@@ -5,6 +5,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
-  CheckCircle, CircleX, FileOutput, LogOut
+  CheckCircle, CircleX, FileOutput, LogOut, Pencil
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -93,6 +94,7 @@ export default function AdminDashboard() {
   const [searchQuestion, setSearchQuestion] = useState("");
   const [searchAudit, setSearchAudit] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [isAddQuestionDialogOpen, setIsAddQuestionDialogOpen] = useState(false);
   const [isEditQuestionDialogOpen, setIsEditQuestionDialogOpen] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string>("");
@@ -113,6 +115,14 @@ export default function AdminDashboard() {
     password: "",
   });
 
+  // Edit user form state
+  const [editUser, setEditUser] = useState({
+    id: "",
+    name: "",
+    email: "",
+    role: "auditor",
+  });
+
   // New question form state
   const [newQuestion, setNewQuestion] = useState({
     text: "",
@@ -127,6 +137,9 @@ export default function AdminDashboard() {
     domain_id: "",
     subdomain_id: "",
   });
+
+  // Hardcoded superadmin email
+  const hardcodedSuperadminEmail = "navazputra@students.amikom.ac.id";
 
   // Fetch questions from database
   useEffect(() => {
@@ -159,11 +172,9 @@ export default function AdminDashboard() {
 
   // Check if admin access token is available
   useEffect(() => {
-    // Reset token error when session changes
     setTokenError(null);
     
-    // Check if user is an admin and has a valid session
-    if (user?.role !== "admin" && user?.email !== "navazputra@students.amikom.ac.id") {
+    if (user?.role !== "admin" && user?.email !== hardcodedSuperadminEmail) {
       setTokenError("You must be logged in as an admin to access this page");
     } else if (!session?.access_token) {
       setTokenError("No admin access token available. Please try logging out and logging back in.");
@@ -177,8 +188,7 @@ export default function AdminDashboard() {
         setLoadingUsers(true);
         
         // Special case for superadmin user - if it's the hardcoded superadmin
-        if (user?.email === "navazputra@students.amikom.ac.id") {
-          // For superadmin without token, call the edge function with a special flag
+        if (user?.email === hardcodedSuperadminEmail) {
           const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
             method: "POST",
             headers: {
@@ -187,7 +197,7 @@ export default function AdminDashboard() {
             body: JSON.stringify({
               action: "listUsers",
               superadmin: true,
-              superadminEmail: "navazputra@students.amikom.ac.id"
+              superadminEmail: hardcodedSuperadminEmail
             })
           });
           
@@ -203,14 +213,12 @@ export default function AdminDashboard() {
           return;
         }
 
-        // Regular case - use the auth token if available
         if (!session?.access_token) {
           setTokenError("No access token available for admin operations");
           setUsers([]);
           return;
         }
 
-        // Call our edge function to list users
         const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -241,64 +249,97 @@ export default function AdminDashboard() {
       }
     };
 
-    if (user && (user.role === "admin" || user.email === "navazputra@students.amikom.ac.id")) {
+    if (user && (user.role === "admin" || user.email === hardcodedSuperadminEmail)) {
       fetchUsers();
     }
   }, [toast, session?.access_token, user]);
 
-  // Fetch audits from database
+  // Fetch all audits from database
   useEffect(() => {
     const fetchAudits = async () => {
       try {
         setLoadingAudits(true);
         
-        // Use Supabase query to get all audits
         const { data, error } = await supabase
           .from('audits')
-          .select('*')
+          .select(`
+            *,
+            audit_domains(*),
+            audit_answers(*)
+          `)
           .order('created_at', { ascending: false });
         
         if (error) {
           throw error;
         }
 
-        // Get basic user info for each audit
         const auditsWithUserInfo = await Promise.all((data || []).map(async (audit) => {
           let userEmail = "Unknown";
+          let userName = "Unknown";
           
-          // Only attempt to get user info if there's a valid user_id and access token
-          if (audit.user_id && session?.access_token) {
+          if (audit.user_id) {
             try {
-              // Call our edge function to get user info
-              const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify({
-                  action: "getUserInfo",
-                  userId: audit.user_id
-                })
-              });
-              
-              if (response.ok) {
-                const result = await response.json();
-                if (result.data?.user) {
-                  userEmail = result.data.user.email;
+              if (user?.email === hardcodedSuperadminEmail) {
+                const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                    action: "getUserInfo",
+                    userId: audit.user_id,
+                    superadmin: true,
+                    superadminEmail: hardcodedSuperadminEmail
+                  })
+                });
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.data?.user) {
+                    userEmail = result.data.user.email;
+                    userName = result.data.user.user_metadata?.name || "Unknown";
+                  }
+                }
+              } else if (session?.access_token) {
+                const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session.access_token}`
+                  },
+                  body: JSON.stringify({
+                    action: "getUserInfo",
+                    userId: audit.user_id
+                  })
+                });
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.data?.user) {
+                    userEmail = result.data.user.email;
+                    userName = result.data.user.user_metadata?.name || "Unknown";
+                  }
                 }
               }
             } catch (err) {
               console.error("Error fetching user info:", err);
             }
           } else if (audit.user_id === "superadmin-id") {
-            // Handle the hardcoded superadmin case
-            userEmail = "navazputra@students.amikom.ac.id";
+            userEmail = hardcodedSuperadminEmail;
+            userName = "Super Admin";
           }
+          
+          const totalAnswers = audit.audit_answers?.length || 0;
+          const answerCount = totalAnswers;
+          const completionPercentage = answerCount > 0 ? 100 : 0;
           
           return {
             ...audit,
-            user: { email: userEmail }
+            user: { 
+              email: userEmail,
+              name: userName
+            },
+            completionPercentage
           };
         }));
 
@@ -315,7 +356,7 @@ export default function AdminDashboard() {
       }
     };
 
-    if (user && (user.role === "admin" || user.email === "navazputra@students.amikom.ac.id")) {
+    if (user && (user.role === "admin" || user.email === hardcodedSuperadminEmail)) {
       fetchAudits();
     }
   }, [toast, session?.access_token, user]);
@@ -323,7 +364,6 @@ export default function AdminDashboard() {
   // Filtered questions based on search and domain/subdomain selection
   const filteredQuestions = questions.filter(
     (question) => {
-      // Apply domain and subdomain filters first
       if (selectedDomain && question.domain_id !== selectedDomain) {
         return false;
       }
@@ -331,7 +371,6 @@ export default function AdminDashboard() {
         return false;
       }
       
-      // Then apply search text filter
       return question.text.toLowerCase().includes(searchQuestion.toLowerCase()) ||
         question.domain_id.toLowerCase().includes(searchQuestion.toLowerCase()) ||
         question.subdomain_id.toLowerCase().includes(searchQuestion.toLowerCase());
@@ -362,9 +401,7 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Special case for the hardcoded superadmin
-      if (user?.email === "navazputra@students.amikom.ac.id") {
-        // Call the edge function with superadmin flag
+      if (user?.email === hardcodedSuperadminEmail) {
         const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -380,7 +417,7 @@ export default function AdminDashboard() {
               emailConfirm: true
             },
             superadmin: true,
-            superadminEmail: "navazputra@students.amikom.ac.id"
+            superadminEmail: hardcodedSuperadminEmail
           })
         });
         
@@ -395,7 +432,6 @@ export default function AdminDashboard() {
           description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
         });
 
-        // Refresh users list
         const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -404,7 +440,7 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             action: "listUsers",
             superadmin: true,
-            superadminEmail: "navazputra@students.amikom.ac.id"
+            superadminEmail: hardcodedSuperadminEmail
           })
         });
         
@@ -433,7 +469,6 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Call our edge function to create a user
       const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
         method: "POST",
         headers: {
@@ -463,7 +498,6 @@ export default function AdminDashboard() {
         description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
       });
 
-      // Refresh users list by calling our edge function again
       const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
         method: "POST",
         headers: {
@@ -498,11 +532,137 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleEditUser = async () => {
+    try {
+      if (!editUser.id || !editUser.email) {
+        toast({
+          title: "Error",
+          description: "Data pengguna tidak lengkap",
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      if (user?.email === hardcodedSuperadminEmail) {
+        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "updateUser",
+            userId: editUser.id,
+            userData: {
+              email: editUser.email,
+              name: editUser.name,
+              role: editUser.role
+            },
+            superadmin: true,
+            superadminEmail: hardcodedSuperadminEmail
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to update user");
+        }
+
+        toast({
+          title: "Pengguna Diperbarui",
+          description: `${editUser.name} telah diperbarui`
+        });
+
+        const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "listUsers",
+            superadmin: true,
+            superadminEmail: hardcodedSuperadminEmail
+          })
+        });
+        
+        const usersResult = await usersResponse.json();
+        
+        if (usersResponse.ok) {
+          setUsers(usersResult.data?.users || []);
+        }
+        
+        setIsEditUserDialogOpen(false);
+        return;
+      }
+      
+      if (!session?.access_token) {
+        toast({
+          title: "Error",
+          description: "No access token available. Silakan logout dan login kembali.",
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "updateUser",
+          userId: editUser.id,
+          userData: {
+            email: editUser.email,
+            name: editUser.name,
+            role: editUser.role
+          }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update user");
+      }
+
+      toast({
+        title: "Pengguna Diperbarui",
+        description: `${editUser.name} telah diperbarui`
+      });
+
+      const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "listUsers"
+        })
+      });
+      
+      const usersResult = await usersResponse.json();
+      
+      if (usersResponse.ok) {
+        setUsers(usersResult.data?.users || []);
+      }
+      
+      setIsEditUserDialogOpen(false);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast({
+        title: "Error",
+        description: `Gagal memperbarui pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
+        variant: 'destructive'
+      });
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     try {
-      // Special case for the hardcoded superadmin
-      if (user?.email === "navazputra@students.amikom.ac.id") {
-        // Call the edge function with superadmin flag
+      if (user?.email === hardcodedSuperadminEmail) {
         const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -512,7 +672,7 @@ export default function AdminDashboard() {
             action: "deleteUser",
             userId: userId,
             superadmin: true,
-            superadminEmail: "navazputra@students.amikom.ac.id"
+            superadminEmail: hardcodedSuperadminEmail
           })
         });
         
@@ -527,7 +687,6 @@ export default function AdminDashboard() {
           description: "Pengguna berhasil dihapus"
         });
 
-        // Refresh users list
         const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -536,7 +695,7 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             action: "listUsers",
             superadmin: true,
-            superadminEmail: "navazputra@students.amikom.ac.id"
+            superadminEmail: hardcodedSuperadminEmail
           })
         });
         
@@ -558,7 +717,6 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Call our edge function to delete a user
       const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
         method: "POST",
         headers: {
@@ -582,7 +740,6 @@ export default function AdminDashboard() {
         description: "Pengguna berhasil dihapus"
       });
 
-      // Refresh users list
       const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
         method: "POST",
         headers: {
@@ -607,6 +764,17 @@ export default function AdminDashboard() {
         variant: 'destructive'
       });
     }
+  };
+
+  // Open edit user dialog and populate form
+  const openEditUserDialog = (userData: any) => {
+    setEditUser({
+      id: userData.id,
+      name: userData.user_metadata?.name || "",
+      email: userData.email,
+      role: userData.user_metadata?.role || "auditor",
+    });
+    setIsEditUserDialogOpen(true);
   };
 
   const handleAddQuestion = async () => {
@@ -770,7 +938,6 @@ export default function AdminDashboard() {
                 <Button 
                   variant="default" 
                   onClick={() => {
-                    // Attempt to logout and redirect to login page
                     const auth = useAuth();
                     auth.logout();
                     window.location.href = "/login";
@@ -1105,12 +1272,7 @@ export default function AdminDashboard() {
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  onClick={() => {
-                                    toast({
-                                      title: "Info",
-                                      description: "Fitur edit pengguna akan segera hadir"
-                                    });
-                                  }}
+                                  onClick={() => openEditUserDialog(user)}
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
@@ -1136,6 +1298,63 @@ export default function AdminDashboard() {
               )}
             </CardContent>
           </Card>
+
+          {/* Edit User Dialog */}
+          <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Pengguna</DialogTitle>
+                <DialogDescription>
+                  Perbarui detail pengguna
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-name" className="text-right">
+                    Nama
+                  </Label>
+                  <Input
+                    id="edit-name"
+                    value={editUser.name}
+                    onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-email" className="text-right">
+                    Email
+                  </Label>
+                  <Input
+                    id="edit-email"
+                    value={editUser.email}
+                    onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                    className="col-span-3"
+                    disabled
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-role" className="text-right">
+                    Peran
+                  </Label>
+                  <Select
+                    value={editUser.role}
+                    onValueChange={(value) => setEditUser({ ...editUser, role: value })}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Pilih peran" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="auditor">Auditor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleEditUser}>Simpan Perubahan</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
         
         {/* Questions Tab */}
@@ -1344,7 +1563,7 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle>Laporan Audit</CardTitle>
-              <CardDescription>Lihat dan ekspor laporan hasil audit</CardDescription>
+              <CardDescription>Lihat dan ekspor semua laporan hasil audit</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col space-y-4">
@@ -1374,6 +1593,7 @@ export default function AdminDashboard() {
                           <TableHead>Tanggal Audit</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Auditor</TableHead>
+                          <TableHead>Progres</TableHead>
                           <TableHead className="text-right">Tindakan</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1403,7 +1623,21 @@ export default function AdminDashboard() {
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell>{audit.user?.email || '-'}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span>{audit.user?.name || '-'}</span>
+                                <span className="text-xs text-muted-foreground">{audit.user?.email || '-'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="w-full bg-muted rounded-full h-2.5">
+                                <div 
+                                  className="bg-cobain-blue h-2.5 rounded-full" 
+                                  style={{ width: `${audit.completionPercentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="text-xs mt-1">{audit.completionPercentage}%</div>
+                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end space-x-2">
                                 <Button 

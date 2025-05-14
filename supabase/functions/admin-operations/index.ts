@@ -40,8 +40,13 @@ serve(async (req) => {
     // Get the authorization header from the request (if available)
     const authHeader = req.headers.get('Authorization');
     
+    // Verify superadmin first if that's the claim
+    if (isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
+      isAdmin = true;
+      console.log("Superadmin access granted");
+    }
     // If there's an auth header, verify the user
-    if (authHeader) {
+    else if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
       const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
       
@@ -51,21 +56,6 @@ serve(async (req) => {
         isAdmin = user.email === hardcodedSuperadminEmail || 
                  user.user_metadata?.role === 'admin';
       }
-    }
-    
-    // For superadmin requests, validate the provided email
-    if (isSuperAdmin) {
-      if (superadminEmail !== hardcodedSuperadminEmail) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized - Superadmin access required' }),
-          {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
-      }
-      // If email matches, grant access to proceed
-      isAdmin = true;
     }
     
     // Allow operations only for verified admins
@@ -95,8 +85,11 @@ serve(async (req) => {
         error = response.error;
         break;
 
-      case 'deleteUser':
-        // Verify if target user is not an admin before deletion
+      case 'updateUser':
+        // Extract user data fields
+        const { name: updateName, role: updateRole } = userData;
+        
+        // Verify if target user exists before updating
         const targetUserResponse = await supabaseAdmin.auth.admin.getUserById(userId);
         if (targetUserResponse.error) {
           return new Response(
@@ -108,7 +101,35 @@ serve(async (req) => {
           )
         }
         
-        const targetUser = targetUserResponse.data.user;
+        // Update user metadata
+        const updateResponse = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          {
+            user_metadata: { 
+              name: updateName,
+              role: updateRole
+            }
+          }
+        );
+        
+        data = updateResponse.data;
+        error = updateResponse.error;
+        break;
+
+      case 'deleteUser':
+        // Verify if target user is not an admin before deletion
+        const userToDeleteResponse = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (userToDeleteResponse.error) {
+          return new Response(
+            JSON.stringify({ error: userToDeleteResponse.error.message }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        
+        const targetUser = userToDeleteResponse.data.user;
         const isTargetAdmin = targetUser.user_metadata?.role === 'admin' || 
                              targetUser.email === hardcodedSuperadminEmail;
         
@@ -132,6 +153,36 @@ serve(async (req) => {
         if (auditDeleteError) {
           console.error("Error deleting user's audits:", auditDeleteError);
         }
+
+        // Also delete audit answers and domains associated with user's audits
+        const { data: userAudits, error: fetchAuditsError } = await supabaseAdmin
+          .from('audits')
+          .select('id')
+          .eq('user_id', userId);
+
+        if (!fetchAuditsError && userAudits && userAudits.length > 0) {
+          const auditIds = userAudits.map(audit => audit.id);
+          
+          // Delete audit answers
+          const { error: answersDeleteError } = await supabaseAdmin
+            .from('audit_answers')
+            .delete()
+            .in('audit_id', auditIds);
+            
+          if (answersDeleteError) {
+            console.error("Error deleting audit answers:", answersDeleteError);
+          }
+          
+          // Delete audit domains
+          const { error: domainsDeleteError } = await supabaseAdmin
+            .from('audit_domains')
+            .delete()
+            .in('audit_id', auditIds);
+            
+          if (domainsDeleteError) {
+            console.error("Error deleting audit domains:", domainsDeleteError);
+          }
+        }
           
         // Proceed with user deletion
         const deleteResponse = await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -140,6 +191,7 @@ serve(async (req) => {
         break;
 
       case 'listUsers':
+        console.log("Listing users, isAdmin:", isAdmin);
         const listResponse = await supabaseAdmin.auth.admin.listUsers();
         data = listResponse.data;
         error = listResponse.error;
@@ -189,6 +241,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error("Admin operation error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
