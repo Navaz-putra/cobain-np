@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -89,7 +88,7 @@ const domainStructure = [
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
   const [searchUser, setSearchUser] = useState("");
   const [searchQuestion, setSearchQuestion] = useState("");
@@ -163,18 +162,35 @@ export default function AdminDashboard() {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
-        const { data, error } = await supabase.auth.admin.listUsers();
         
-        if (error) {
-          throw error;
+        if (!session?.access_token) {
+          throw new Error("No access token available");
         }
 
-        setUsers(data?.users || []);
+        // Call our edge function to list users
+        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
+            action: "listUsers"
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          setUsers(result.data?.users || []);
+        } else {
+          throw new Error(result.error || "Failed to fetch users");
+        }
       } catch (error: any) {
         console.error('Error fetching users:', error);
         toast({
           title: 'Error',
-          description: 'Gagal mengambil data pengguna',
+          description: `Gagal mengambil data pengguna: ${error.message}`,
           variant: 'destructive'
         });
       } finally {
@@ -183,7 +199,7 @@ export default function AdminDashboard() {
     };
 
     fetchUsers();
-  }, [toast]);
+  }, [toast, session?.access_token]);
 
   // Fetch audits from database
   useEffect(() => {
@@ -256,18 +272,33 @@ export default function AdminDashboard() {
         return;
       }
 
-      const { data, error } = await supabase.auth.admin.createUser({
-        email: newUser.email,
-        password: newUser.password,
-        user_metadata: {
-          name: newUser.name,
-          role: newUser.role
-        },
-        email_confirm: true
-      });
+      if (!session?.access_token) {
+        throw new Error("No access token available");
+      }
 
-      if (error) {
-        throw error;
+      // Call our edge function to create a user
+      const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "createUser",
+          userData: {
+            email: newUser.email,
+            password: newUser.password,
+            name: newUser.name,
+            role: newUser.role,
+            emailConfirm: true
+          }
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create user");
       }
 
       toast({
@@ -275,9 +306,23 @@ export default function AdminDashboard() {
         description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
       });
 
-      // Refresh users list
-      const { data: userData } = await supabase.auth.admin.listUsers();
-      setUsers(userData?.users || []);
+      // Refresh users list by calling our edge function again
+      const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "listUsers"
+        })
+      });
+      
+      const usersResult = await usersResponse.json();
+      
+      if (usersResponse.ok) {
+        setUsers(usersResult.data?.users || []);
+      }
       
       setIsAddUserDialogOpen(false);
       setNewUser({
@@ -298,10 +343,27 @@ export default function AdminDashboard() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      if (!session?.access_token) {
+        throw new Error("No access token available");
+      }
+
+      // Call our edge function to delete a user
+      const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "deleteUser",
+          userId: userId
+        })
+      });
       
-      if (error) {
-        throw error;
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete user");
       }
 
       toast({
@@ -310,8 +372,22 @@ export default function AdminDashboard() {
       });
 
       // Refresh users list
-      const { data: userData } = await supabase.auth.admin.listUsers();
-      setUsers(userData?.users || []);
+      const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "listUsers"
+        })
+      });
+      
+      const usersResult = await usersResponse.json();
+      
+      if (usersResponse.ok) {
+        setUsers(usersResult.data?.users || []);
+      }
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast({
