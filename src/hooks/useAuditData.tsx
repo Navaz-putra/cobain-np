@@ -14,7 +14,11 @@ export const useAuditData = ({ userId }: UseAuditDataProps) => {
 
   useEffect(() => {
     const fetchAudits = async () => {
-      if (!userId) return;
+      if (!userId) {
+        setLoading(false);
+        setAudits([]);
+        return;
+      }
       
       try {
         setLoading(true);
@@ -29,16 +33,33 @@ export const useAuditData = ({ userId }: UseAuditDataProps) => {
           throw error;
         }
         
-        // Fetch audit progress for each audit
-        const auditsWithProgress = await Promise.all((data || []).map(async (audit) => {
+        // Fetch audit progress and domains for each audit
+        const auditsWithDetails = await Promise.all((data || []).map(async (audit) => {
+          // Get audit progress
           const progress = await getAuditProgress(audit.id);
+          
+          // Get audit domains
+          const { data: domainData, error: domainError } = await supabase
+            .from("audit_domains")
+            .select("domain_id")
+            .eq("audit_id", audit.id)
+            .eq("selected", true);
+            
+          if (domainError) {
+            console.error("Error fetching audit domains:", domainError);
+          }
+          
+          // Extract domain IDs
+          const domains = (domainData || []).map(d => d.domain_id);
+          
           return {
             ...audit,
-            progress: Math.round(progress)
+            progress: Math.round(progress),
+            domains: domains
           };
         }));
         
-        setAudits(auditsWithProgress);
+        setAudits(auditsWithDetails);
       } catch (error) {
         console.error("Error fetching audits:", error);
         toast({

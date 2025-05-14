@@ -23,37 +23,6 @@ import { useAuditData } from "@/hooks/useAuditData";
 import { GettingStartedGuide } from "@/components/GettingStartedGuide";
 import { MaturityLevelInfo } from "@/components/MaturityLevelInfo";
 
-// Mock audit data
-const mockAudits = [
-  {
-    id: "1",
-    title: "Annual IT Governance Audit",
-    audit_date: "2025-03-15",
-    domains: ["EDM", "APO"],
-    status: "in-progress",
-    progress: 35,
-    organization: "Example Corp"
-  },
-  {
-    id: "2",
-    title: "Security Controls Assessment",
-    audit_date: "2025-02-20",
-    domains: ["DSS"],
-    status: "completed",
-    progress: 100,
-    organization: "Example Corp"
-  },
-  {
-    id: "3",
-    title: "Project Governance Review",
-    audit_date: "2025-04-10",
-    domains: ["BAI"],
-    status: "planned",
-    progress: 0,
-    organization: "Example Corp"
-  },
-];
-
 export default function AuditorDashboard() {
   const { user } = useAuth();
   
@@ -125,7 +94,8 @@ export default function AuditorDashboard() {
                 <CardDescription>Ringkasan aktivitas audit Anda</CardDescription>
               </CardHeader>
               <CardContent>
-                <StatisticsView audits={audits} mockAudits={mockAudits} />
+                {/* Pass only the real audits data, removing the mockAudits fallback */}
+                <StatisticsView audits={audits} />
               </CardContent>
             </Card>
           </TabsContent>
