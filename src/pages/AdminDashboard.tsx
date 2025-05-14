@@ -117,20 +117,33 @@ export default function AdminDashboard() {
     password: "",
   });
 
-  // Fetch users from database
+  // Fetch users from database via edge function
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
-        const { data, error } = await supabase
-          .from('users')
-          .select('*');
+        
+        const { data: { users }, error } = await fetch(
+          `https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({
+              operation: 'getUsers',
+              superadmin: true,
+              email: 'navazputra@students.amikom.ac.id'
+            })
+          }
+        ).then(res => res.json());
         
         if (error) {
-          throw error;
+          throw new Error(error);
         }
 
-        setUsers(data || []);
+        setUsers(users || []);
       } catch (error) {
         console.error('Error fetching users:', error);
         toast({
@@ -138,13 +151,18 @@ export default function AdminDashboard() {
           description: 'Gagal mengambil data pengguna',
           variant: 'destructive'
         });
+        
+        // If there's an authorization error, set token error
+        if (error.message && error.message.includes('Unauthorized')) {
+          setTokenError('Tidak diizinkan mengakses data pengguna. Verifikasi bahwa Anda memiliki akses admin yang valid.');
+        }
       } finally {
         setLoadingUsers(false);
       }
     };
 
     fetchUsers();
-  }, [toast]);
+  }, [toast, session]);
 
   // Fetch user audits when selectedUserId changes
   useEffect(() => {
@@ -154,18 +172,28 @@ export default function AdminDashboard() {
       try {
         setLoadingUserAudits(true);
         
-        // Get audits for specific user
-        const { data, error } = await supabase
-          .from('audits')
-          .select('*')
-          .eq('user_id', selectedUserId)
-          .order('created_at', { ascending: false });
+        const { data: { audits }, error } = await fetch(
+          `https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`
+            },
+            body: JSON.stringify({
+              operation: 'getUserAudits',
+              superadmin: true,
+              email: 'navazputra@students.amikom.ac.id',
+              userId: selectedUserId
+            })
+          }
+        ).then(res => res.json());
         
         if (error) {
-          throw error;
+          throw new Error(error);
         }
 
-        setUserAudits(data || []);
+        setUserAudits(audits || []);
       } catch (error) {
         console.error('Error fetching user audits:', error);
         toast({
@@ -179,7 +207,7 @@ export default function AdminDashboard() {
     };
 
     fetchUserAudits();
-  }, [selectedUserId, toast]);
+  }, [selectedUserId, toast, session]);
 
   const handleAddUser = async () => {
     try {
@@ -192,16 +220,28 @@ export default function AdminDashboard() {
         return;
       }
 
-      const response = await supabase
-        .from('users')
-        .insert([{ 
-          email: newUser.email, 
-          password: newUser.password, 
-          user_metadata: { name: newUser.name, role: newUser.role } 
-        }]);
+      const { data: { user }, error } = await fetch(
+        `https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            operation: 'addUser',
+            superadmin: true,
+            email: 'navazputra@students.amikom.ac.id',
+            name: newUser.name,
+            email: newUser.email,
+            password: newUser.password,
+            role: newUser.role
+          })
+        }
+      ).then(res => res.json());
 
-      if (response.error) {
-        throw response.error;
+      if (error) {
+        throw new Error(error);
       }
 
       toast({
@@ -209,7 +249,7 @@ export default function AdminDashboard() {
         description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
       });
 
-      setUsers([...users, response.data[0]]);
+      setUsers([...users, user]);
       setIsAddUserDialogOpen(false);
       setNewUser({
         name: "",
@@ -251,19 +291,28 @@ export default function AdminDashboard() {
         return;
       }
 
-      const response = await supabase
-        .from('users')
-        .update({ 
-          user_metadata: { 
-            name: editUser.name,
-            role: editUser.role
+      const { data: { user }, error } = await fetch(
+        `https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
           },
-          password: editUser.password || undefined 
-        })
-        .eq('id', editUser.id);
+          body: JSON.stringify({
+            operation: 'updateUser',
+            superadmin: true,
+            email: 'navazputra@students.amikom.ac.id',
+            userId: editUser.id,
+            name: editUser.name,
+            password: editUser.password || undefined,
+            role: editUser.role
+          })
+        }
+      ).then(res => res.json());
 
-      if (response.error) {
-        throw response.error;
+      if (error) {
+        throw new Error(error);
       }
 
       toast({
@@ -292,13 +341,25 @@ export default function AdminDashboard() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const response = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
+      const { error } = await fetch(
+        `https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({
+            operation: 'deleteUser',
+            superadmin: true,
+            email: 'navazputra@students.amikom.ac.id',
+            userId: userId
+          })
+        }
+      ).then(res => res.json());
 
-      if (response.error) {
-        throw response.error;
+      if (error) {
+        throw new Error(error);
       }
 
       setUsers(users.filter(u => u.id !== userId));
