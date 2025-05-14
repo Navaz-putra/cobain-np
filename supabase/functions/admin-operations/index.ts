@@ -1,112 +1,145 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+import { corsHeaders } from '../_shared/cors.ts'
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  // This is needed if you're planning to invoke your function from a browser.
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    // Create a Supabase client with the Auth Admin API key
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      serviceRoleKey,
       {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
-    );
+    )
 
-    const { operation, superadmin, userId, userData, superadminEmail, password, role, name, email } = await req.json();
-
-    // Special case for the superadmin user
-    if (superadmin && superadminEmail === 'navazputra@students.amikom.ac.id') {
-      switch(operation) {
-        case 'getUsers':
-          const { data: users, error: usersError } = await supabaseClient
-            .from('auth.users')
-            .select('*');
-          
-          if (usersError) throw usersError;
-          
-          return new Response(JSON.stringify({ users }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-        
-        case 'addUser':
-          const { data: newUser, error: addError } = await supabaseClient.auth.admin
-            .createUser({
-              email: email,
-              password: password,
-              user_metadata: { name, role },
-              email_confirm: true
-            });
-            
-          if (addError) throw addError;
-          
-          return new Response(JSON.stringify({ user: newUser }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-          
-        case 'updateUser':
-          const { data: updatedUser, error: updateError } = await supabaseClient.auth.admin
-            .updateUserById(userId, {
-              user_metadata: { name, role },
-              password: password || undefined,
-            });
-            
-          if (updateError) throw updateError;
-          
-          return new Response(JSON.stringify({ user: updatedUser }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-          
-        case 'deleteUser':
-          const { error: deleteError } = await supabaseClient.auth.admin
-            .deleteUser(userId);
-            
-          if (deleteError) throw deleteError;
-          
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-          
-        case 'getUserAudits':
-          const { data: userAudits, error: auditsError } = await supabaseClient
-            .from('audits')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
-            
-          if (auditsError) throw auditsError;
-          
-          return new Response(JSON.stringify({ audits: userAudits }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
+    // Parse the request body first
+    const requestData = await req.json();
+    const { action, userData, userId } = requestData;
+    
+    // Check for superadmin case from the request body
+    const isSuperAdminRequest = requestData.superadmin === true;
+    
+    let isAdmin = false;
+    let user = null;
+    
+    // Get the authorization header from the request (if available)
+    const authHeader = req.headers.get('Authorization');
+    
+    // If there's an auth header, verify the user
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (!userError && userData?.user) {
+        user = userData.user;
+        // Check if user is an admin
+        isAdmin = user.email === 'navazputra@students.amikom.ac.id' || 
+                 user.user_metadata?.role === 'admin';
       }
     }
+    
+    // Allow operations for superadmin requests or verified admins
+    if (!isAdmin && !isSuperAdminRequest) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Admin access required' }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
-    return new Response(JSON.stringify({ error: "Unauthorized access" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 401,
-    });
+    let data, error;
+
+    // Perform the requested admin action
+    switch (action) {
+      case 'createUser':
+        const { email, password, name, role, emailConfirm = true } = userData;
+        const response = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          user_metadata: { name, role },
+          email_confirm: emailConfirm
+        });
+        data = response.data;
+        error = response.error;
+        break;
+
+      case 'deleteUser':
+        const deleteResponse = await supabaseAdmin.auth.admin.deleteUser(userId);
+        data = deleteResponse.data;
+        error = deleteResponse.error;
+        break;
+
+      case 'listUsers':
+        const listResponse = await supabaseAdmin.auth.admin.listUsers();
+        data = listResponse.data;
+        error = listResponse.error;
+        break;
+        
+      case 'getUserInfo':
+        // Get a single user's info
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'User ID required' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
+        data = { user: userResponse.data.user };
+        error = userResponse.error;
+        break;
+
+      default:
+        return new Response(
+          JSON.stringify({ error: 'Invalid action' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+    }
+
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    return new Response(
+      JSON.stringify({ data }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
-    });
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
   }
-});
+})
