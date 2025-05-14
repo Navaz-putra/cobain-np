@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import * as React from "react";
 import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export function ThemeToggle() {
   const { theme, toggleTheme, setTheme } = useTheme();
   const { t } = useLanguage();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     setMounted(true);
   }, []);
 
