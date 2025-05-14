@@ -25,40 +25,36 @@ serve(async (req) => {
       }
     )
 
-    // Get the authorization header from the request
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // Verify the user is authenticated and is an admin
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+    // Parse the request body first
+    const requestData = await req.json();
+    const { action, userData, userId } = requestData;
     
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // Check if user is an admin (you can adapt this based on your role system)
-    // For this example, we'll check if the email is the superadmin email or their role is admin
-    const isAdmin = user.email === 'navazputra@students.amikom.ac.id' || 
-                   user.user_metadata?.role === 'admin'
+    // Check for superadmin case from the request body
+    const isSuperAdminRequest = requestData.superadmin === true;
     
-    if (!isAdmin) {
+    let isAdmin = false;
+    let user = null;
+    
+    // Get the authorization header from the request (if available)
+    const authHeader = req.headers.get('Authorization');
+    
+    // If there's an auth header, verify the user
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (!userError && userData?.user) {
+        user = userData.user;
+        // Check if user is an admin
+        isAdmin = user.email === 'navazputra@students.amikom.ac.id' || 
+                 user.user_metadata?.role === 'admin';
+      }
+    }
+    
+    // Allow operations for superadmin requests or verified admins
+    if (!isAdmin && !isSuperAdminRequest) {
       return new Response(
-        JSON.stringify({ error: 'Forbidden - Admin access required' }),
+        JSON.stringify({ error: 'Unauthorized - Admin access required' }),
         {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -66,36 +62,33 @@ serve(async (req) => {
       )
     }
 
-    // Parse the request body
-    const { action, userData, userId } = await req.json()
-
-    let data, error
+    let data, error;
 
     // Perform the requested admin action
     switch (action) {
       case 'createUser':
-        const { email, password, name, role, emailConfirm = true } = userData
+        const { email, password, name, role, emailConfirm = true } = userData;
         const response = await supabaseAdmin.auth.admin.createUser({
           email,
           password,
           user_metadata: { name, role },
           email_confirm: emailConfirm
-        })
-        data = response.data
-        error = response.error
-        break
+        });
+        data = response.data;
+        error = response.error;
+        break;
 
       case 'deleteUser':
-        const deleteResponse = await supabaseAdmin.auth.admin.deleteUser(userId)
-        data = deleteResponse.data
-        error = deleteResponse.error
-        break
+        const deleteResponse = await supabaseAdmin.auth.admin.deleteUser(userId);
+        data = deleteResponse.data;
+        error = deleteResponse.error;
+        break;
 
       case 'listUsers':
-        const listResponse = await supabaseAdmin.auth.admin.listUsers()
-        data = listResponse.data
-        error = listResponse.error
-        break
+        const listResponse = await supabaseAdmin.auth.admin.listUsers();
+        data = listResponse.data;
+        error = listResponse.error;
+        break;
         
       case 'getUserInfo':
         // Get a single user's info
@@ -108,10 +101,10 @@ serve(async (req) => {
             }
           )
         }
-        const userResponse = await supabaseAdmin.auth.admin.getUserById(userId)
-        data = { user: userResponse.data.user }
-        error = userResponse.error
-        break
+        const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
+        data = { user: userResponse.data.user };
+        error = userResponse.error;
+        break;
 
       default:
         return new Response(

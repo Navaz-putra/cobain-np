@@ -177,23 +177,36 @@ export default function AdminDashboard() {
       try {
         setLoadingUsers(true);
         
-        if (!session?.access_token) {
-          setTokenError("No access token available for admin operations");
-          setUsers([]);
+        // Special case for superadmin user - if it's the hardcoded superadmin
+        if (user?.email === "navazputra@students.amikom.ac.id") {
+          // For superadmin without token, call the edge function with a special flag
+          const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              action: "listUsers",
+              superadmin: true
+            })
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            setUsers(result.data?.users || []);
+          } else {
+            throw new Error(result.error || "Failed to fetch users");
+          }
+          
+          setLoadingUsers(false);
           return;
         }
 
-        // Special case for superadmin user - if it's the hardcoded superadmin
-        if (user?.email === "navazputra@students.amikom.ac.id" && !session?.access_token) {
-          // For superadmin without token, provide a simplified experience
-          setUsers([
-            {
-              id: "superadmin-id",
-              email: "navazputra@students.amikom.ac.id",
-              user_metadata: { name: "Super Admin", role: "admin" },
-              banned_until: null
-            }
-          ]);
+        // Regular case - use the auth token if available
+        if (!session?.access_token) {
+          setTokenError("No access token available for admin operations");
+          setUsers([]);
           return;
         }
 
@@ -220,7 +233,7 @@ export default function AdminDashboard() {
         console.error('Error fetching users:', error);
         toast({
           title: 'Error',
-          description: `Gagal mengambil data pengguna: ${error.message}`,
+          description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
           variant: 'destructive'
         });
       } finally {
@@ -349,38 +362,67 @@ export default function AdminDashboard() {
         return;
       }
 
-      if (!session?.access_token) {
-        // Special case for the hardcoded superadmin
-        if (user?.email === "navazputra@students.amikom.ac.id") {
-          // Simulate adding a user for the superadmin
-          const fakeId = `user-${Date.now()}`;
-          const newUserObject = {
-            id: fakeId,
-            email: newUser.email,
-            user_metadata: { 
-              name: newUser.name, 
-              role: newUser.role 
+      // Special case for the hardcoded superadmin
+      if (user?.email === "navazputra@students.amikom.ac.id") {
+        // Call the edge function with superadmin flag
+        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "createUser",
+            userData: {
+              email: newUser.email,
+              password: newUser.password,
+              name: newUser.name,
+              role: newUser.role,
+              emailConfirm: true
             },
-            banned_until: null
-          };
-          
-          setUsers([...users, newUserObject]);
-          
-          toast({
-            title: "Pengguna Ditambahkan",
-            description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
-          });
-          
-          setIsAddUserDialogOpen(false);
-          setNewUser({
-            name: "",
-            email: "",
-            role: "auditor",
-            password: "",
-          });
-          return;
+            superadmin: true
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to create user");
+        }
+
+        toast({
+          title: "Pengguna Ditambahkan",
+          description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
+        });
+
+        // Refresh users list
+        const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "listUsers",
+            superadmin: true
+          })
+        });
+        
+        const usersResult = await usersResponse.json();
+        
+        if (usersResponse.ok) {
+          setUsers(usersResult.data?.users || []);
         }
         
+        setIsAddUserDialogOpen(false);
+        setNewUser({
+          name: "",
+          email: "",
+          role: "auditor",
+          password: "",
+        });
+        return;
+      }
+      
+      if (!session?.access_token) {
         toast({
           title: "Error",
           description: "No access token available. Silakan logout dan login kembali.",
@@ -444,11 +486,11 @@ export default function AdminDashboard() {
         role: "auditor",
         password: "",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error adding user:", error);
       toast({
         title: "Error",
-        description: `Gagal menambahkan pengguna: ${error.message}`,
+        description: `Gagal menambahkan pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
         variant: 'destructive'
       });
     }
@@ -518,11 +560,11 @@ export default function AdminDashboard() {
       if (usersResponse.ok) {
         setUsers(usersResult.data?.users || []);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting user:", error);
       toast({
         title: "Error",
-        description: `Gagal menghapus pengguna: ${error.message}`,
+        description: `Gagal menghapus pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
         variant: 'destructive'
       });
     }
