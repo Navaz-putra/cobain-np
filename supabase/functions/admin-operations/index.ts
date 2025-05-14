@@ -29,9 +29,10 @@ serve(async (req) => {
     const requestData = await req.json();
     const { action, userData, userId } = requestData;
     
-    // Check for superadmin case from the request body
-    const isSuperAdminRequest = requestData.superadmin === true;
-    const superadminEmail = requestData.superadminEmail;
+    // Special handling for superadmin
+    const isSuperAdmin = requestData.superadmin === true;
+    const superadminEmail = requestData.superadminEmail || '';
+    const hardcodedSuperadminEmail = 'navazputra@students.amikom.ac.id';
     
     let isAdmin = false;
     let user = null;
@@ -47,26 +48,30 @@ serve(async (req) => {
       if (!userError && userData?.user) {
         user = userData.user;
         // Check if user is an admin
-        isAdmin = user.email === 'navazputra@students.amikom.ac.id' || 
+        isAdmin = user.email === hardcodedSuperadminEmail || 
                  user.user_metadata?.role === 'admin';
       }
     }
     
-    // Allow operations for superadmin requests or verified admins
-    if (!isAdmin && !isSuperAdminRequest) {
+    // For superadmin requests, validate the provided email
+    if (isSuperAdmin) {
+      if (superadminEmail !== hardcodedSuperadminEmail) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized - Superadmin access required' }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      // If email matches, grant access to proceed
+      isAdmin = true;
+    }
+    
+    // Allow operations only for verified admins
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Admin access required' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // For superadmin email verification
-    if (isSuperAdminRequest && superadminEmail !== 'navazputra@students.amikom.ac.id') {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Superadmin email mismatch' }),
         {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -105,7 +110,7 @@ serve(async (req) => {
         
         const targetUser = targetUserResponse.data.user;
         const isTargetAdmin = targetUser.user_metadata?.role === 'admin' || 
-                             targetUser.email === 'navazputra@students.amikom.ac.id';
+                             targetUser.email === hardcodedSuperadminEmail;
         
         // If attempting to delete an admin, block it
         if (isTargetAdmin) {

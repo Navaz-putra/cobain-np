@@ -13,8 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
-  CheckCircle, CircleX, Filter, ListPlus, ListMinus,
-  FileOutput, Download, LogOut
+  CheckCircle, CircleX, FileOutput, LogOut
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -187,7 +186,8 @@ export default function AdminDashboard() {
             },
             body: JSON.stringify({
               action: "listUsers",
-              superadmin: true
+              superadmin: true,
+              superadminEmail: "navazputra@students.amikom.ac.id"
             })
           });
           
@@ -379,7 +379,8 @@ export default function AdminDashboard() {
               role: newUser.role,
               emailConfirm: true
             },
-            superadmin: true
+            superadmin: true,
+            superadminEmail: "navazputra@students.amikom.ac.id"
           })
         });
         
@@ -402,7 +403,8 @@ export default function AdminDashboard() {
           },
           body: JSON.stringify({
             action: "listUsers",
-            superadmin: true
+            superadmin: true,
+            superadminEmail: "navazputra@students.amikom.ac.id"
           })
         });
         
@@ -498,19 +500,56 @@ export default function AdminDashboard() {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      if (!session?.access_token) {
-        // Special case for the hardcoded superadmin
-        if (user?.email === "navazputra@students.amikom.ac.id") {
-          // Simulate deleting a user for the superadmin
-          setUsers(users.filter(u => u.id !== userId));
-          
-          toast({
-            title: "Pengguna Dihapus",
-            description: "Pengguna berhasil dihapus"
-          });
-          return;
+      // Special case for the hardcoded superadmin
+      if (user?.email === "navazputra@students.amikom.ac.id") {
+        // Call the edge function with superadmin flag
+        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "deleteUser",
+            userId: userId,
+            superadmin: true,
+            superadminEmail: "navazputra@students.amikom.ac.id"
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to delete user");
+        }
+
+        toast({
+          title: "Pengguna Dihapus",
+          description: "Pengguna berhasil dihapus"
+        });
+
+        // Refresh users list
+        const usersResponse = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "listUsers",
+            superadmin: true,
+            superadminEmail: "navazputra@students.amikom.ac.id"
+          })
+        });
+        
+        const usersResult = await usersResponse.json();
+        
+        if (usersResponse.ok) {
+          setUsers(usersResult.data?.users || []);
         }
         
+        return;
+      }
+        
+      if (!session?.access_token) {
         toast({
           title: "Error",
           description: "No access token available. Silakan logout dan login kembali.",
@@ -732,7 +771,6 @@ export default function AdminDashboard() {
                   variant="default" 
                   onClick={() => {
                     // Attempt to logout and redirect to login page
-                    const { useAuth } = require("@/contexts/AuthContext");
                     const auth = useAuth();
                     auth.logout();
                     window.location.href = "/login";
