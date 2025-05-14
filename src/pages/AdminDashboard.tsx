@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -134,7 +135,7 @@ export default function AdminDashboard() {
             body: JSON.stringify({
               operation: 'getUsers',
               superadmin: true,
-              email: 'navazputra@students.amikom.ac.id'
+              superadminEmail: 'navazputra@students.amikom.ac.id'
             })
           }
         ).then(res => res.json());
@@ -183,7 +184,7 @@ export default function AdminDashboard() {
             body: JSON.stringify({
               operation: 'getUserAudits',
               superadmin: true,
-              email: 'navazputra@students.amikom.ac.id',
+              superadminEmail: 'navazputra@students.amikom.ac.id',
               userId: selectedUserId
             })
           }
@@ -231,9 +232,9 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             operation: 'addUser',
             superadmin: true,
-            email: 'navazputra@students.amikom.ac.id',
+            superadminEmail: 'navazputra@students.amikom.ac.id',
             name: newUser.name,
-            email: newUser.email, // This is the duplicate property causing the error
+            email: newUser.email,
             password: newUser.password,
             role: newUser.role
           })
@@ -302,7 +303,7 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             operation: 'updateUser',
             superadmin: true,
-            email: 'navazputra@students.amikom.ac.id',
+            superadminEmail: 'navazputra@students.amikom.ac.id',
             userId: editUser.id,
             name: editUser.name,
             password: editUser.password || undefined,
@@ -352,7 +353,7 @@ export default function AdminDashboard() {
           body: JSON.stringify({
             operation: 'deleteUser',
             superadmin: true,
-            email: 'navazputra@students.amikom.ac.id',
+            superadminEmail: 'navazputra@students.amikom.ac.id',
             userId: userId
           })
         }

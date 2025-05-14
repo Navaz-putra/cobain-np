@@ -25,10 +25,10 @@ serve(async (req) => {
       }
     );
 
-    const { operation, superadmin, userId, userData, email, password, role, name } = await req.json();
+    const { operation, superadmin, userId, userData, superadminEmail, password, role, name, email } = await req.json();
 
     // Special case for the superadmin user
-    if (superadmin && email === 'navazputra@students.amikom.ac.id') {
+    if (superadmin && superadminEmail === 'navazputra@students.amikom.ac.id') {
       switch(operation) {
         case 'getUsers':
           const { data: users, error: usersError } = await supabaseClient
