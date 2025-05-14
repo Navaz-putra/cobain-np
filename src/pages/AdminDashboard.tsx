@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { 
   Users, FileText, Plus, Trash, Edit, Search, 
   CheckCircle, CircleX, Filter, ListPlus, ListMinus,
-  FileOutput, Download
+  FileOutput, Download, LogOut
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -216,7 +216,7 @@ export default function AdminDashboard() {
         } else {
           throw new Error(result.error || "Failed to fetch users");
         }
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error fetching users:', error);
         toast({
           title: 'Error',
