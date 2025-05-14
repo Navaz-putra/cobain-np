@@ -4,31 +4,32 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface UseAuditDataProps {
-  userId: string | undefined;
+  userId?: string | undefined;
+  isAdmin?: boolean;
 }
 
-export const useAuditData = ({ userId }: UseAuditDataProps) => {
+export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}) => {
   const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     const fetchAudits = async () => {
-      if (!userId) {
-        setLoading(false);
-        setAudits([]);
-        return;
-      }
-      
       try {
         setLoading(true);
         
-        const { data, error } = await supabase
-          .from("audits")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
+        let query = supabase.from("audits").select("*");
+        
+        // If not admin and userId is provided, filter by user_id
+        if (!isAdmin && userId) {
+          query = query.eq("user_id", userId);
+        }
+        
+        // Order by creation date, newest first
+        query = query.order("created_at", { ascending: false });
           
+        const { data, error } = await query;
+        
         if (error) {
           throw error;
         }
@@ -72,7 +73,7 @@ export const useAuditData = ({ userId }: UseAuditDataProps) => {
     };
     
     fetchAudits();
-  }, [userId, toast]);
+  }, [userId, isAdmin, toast]);
 
   const getAuditProgress = async (auditId: string) => {
     try {

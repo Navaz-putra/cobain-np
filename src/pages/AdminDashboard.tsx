@@ -206,15 +206,57 @@ export default function AdminDashboard() {
     const fetchAudits = async () => {
       try {
         setLoadingAudits(true);
+        
+        // Use useAuditData hook with isAdmin=true to get all audits
         const { data, error } = await supabase
           .from('audits')
-          .select('*, user:user_id(email)');
+          .select('*')
+          .order('created_at', { ascending: false });
         
         if (error) {
           throw error;
         }
 
-        setAudits(data || []);
+        // Get basic user info for each audit
+        const auditsWithUserInfo = await Promise.all((data || []).map(async (audit) => {
+          let userEmail = "Unknown";
+          
+          // Only attempt to get user info if there's a valid user_id
+          if (audit.user_id) {
+            try {
+              // Call our edge function to get user info
+              if (session?.access_token) {
+                const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session.access_token}`
+                  },
+                  body: JSON.stringify({
+                    action: "getUserInfo",
+                    userId: audit.user_id
+                  })
+                });
+                
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.data?.user) {
+                    userEmail = result.data.user.email;
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Error fetching user info:", err);
+            }
+          }
+          
+          return {
+            ...audit,
+            user: { email: userEmail }
+          };
+        }));
+
+        setAudits(auditsWithUserInfo);
       } catch (error) {
         console.error('Error fetching audits:', error);
         toast({
@@ -228,7 +270,7 @@ export default function AdminDashboard() {
     };
 
     fetchAudits();
-  }, [toast]);
+  }, [toast, session?.access_token]);
 
   // Filtered questions based on search and domain/subdomain selection
   const filteredQuestions = questions.filter(

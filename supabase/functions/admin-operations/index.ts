@@ -96,6 +96,22 @@ serve(async (req) => {
         data = listResponse.data
         error = listResponse.error
         break
+        
+      case 'getUserInfo':
+        // Get a single user's info
+        if (!userId) {
+          return new Response(
+            JSON.stringify({ error: 'User ID required' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+        const userResponse = await supabaseAdmin.auth.admin.getUserById(userId)
+        data = { user: userResponse.data.user }
+        error = userResponse.error
+        break
 
       default:
         return new Response(
