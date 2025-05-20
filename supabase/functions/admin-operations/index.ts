@@ -29,6 +29,8 @@ serve(async (req) => {
 
     // Parse the request body first
     const requestData = await req.json();
+    console.log("Request data received:", JSON.stringify(requestData));
+    
     const { action, userData, userId } = requestData;
     
     console.log("Requested action:", action);
@@ -231,7 +233,7 @@ serve(async (req) => {
         console.log("Listing users, isAdmin:", isAdmin);
         try {
           const listResponse = await supabaseAdmin.auth.admin.listUsers();
-          console.log("List users response:", listResponse);
+          console.log("List users response:", JSON.stringify(listResponse));
           
           if (listResponse.error) {
             error = listResponse.error;

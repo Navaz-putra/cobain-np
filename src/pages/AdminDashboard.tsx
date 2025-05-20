@@ -75,10 +75,10 @@ export default function AdminDashboard() {
         if (user?.email === hardcodedSuperadminEmail) {
           console.log("Fetching users as superadmin");
           
-          // Do not try to directly query auth.users as it's not accessible via the client
-          // Instead, always use the edge function for user data
+          // Always use the edge function for user data
           try {
             // Call the edge function with superadmin credentials
+            // We need to explicitly add the Content-Type header and stringify the body
             const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
               method: "POST",
               headers: {
@@ -92,8 +92,8 @@ export default function AdminDashboard() {
             });
             
             if (!response.ok) {
-              console.error('Edge function error status:', response.status);
               const errorText = await response.text();
+              console.error('Edge function error status:', response.status);
               console.error('Edge function error response:', errorText);
               throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -146,6 +146,7 @@ export default function AdminDashboard() {
         
         if (!response.ok) {
           const errorText = await response.text();
+          console.error('Edge function error status:', response.status);
           console.error('Edge function error response:', errorText);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
