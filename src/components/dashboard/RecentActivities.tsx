@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileCheck, ClipboardCheck, BarChart, Activity } from "lucide-react";
+import { FileCheck, ClipboardCheck, BarChart, Activity, Trash2, Download, UserCog, FilePlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
@@ -49,6 +49,24 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
 
         if (error) throw error;
 
+        // Get user's other activities from the user_activities table if it exists
+        let activityData: any[] = [];
+        try {
+          const { data: activityLogs, error: activityError } = await supabase
+            .from('user_activities')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .order('created_at', { ascending: false })
+            .limit(10);
+            
+          if (!activityError && activityLogs) {
+            activityData = activityLogs;
+          }
+        } catch (activityFetchError) {
+          // If the table doesn't exist yet or other errors, just continue with audit data
+          console.log("Note: user_activities table may not exist yet or other error:", activityFetchError);
+        }
+
         // Convert the audit data to activity items
         const auditActivities: ActivityItem[] = (data || []).map(audit => {
           let action = '';
@@ -70,7 +88,46 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
           };
         });
 
-        setActivities(auditActivities);
+        // Process other activity logs if they exist
+        const otherActivities: ActivityItem[] = activityData.map(activity => {
+          let icon = Activity;
+          
+          // Set appropriate icon based on activity type
+          switch(activity.activity_type) {
+            case 'create_audit':
+              icon = FilePlus;
+              break;
+            case 'delete_audit':
+              icon = Trash2;
+              break;
+            case 'export_report':
+              icon = Download;
+              break;
+            case 'update_profile':
+            case 'change_password':
+              icon = UserCog;
+              break;
+            default:
+              icon = Activity;
+          }
+          
+          return {
+            id: activity.id,
+            action: activity.description,
+            date: formatTimeAgo(activity.created_at),
+            icon
+          };
+        });
+
+        // Combine all activities and sort by date (most recent first)
+        const combinedActivities = [...auditActivities, ...otherActivities]
+          .sort((a, b) => {
+            // This simple sort assumes the date strings are comparable
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          })
+          .slice(0, 10); // Limit to 10 most recent activities
+          
+        setActivities(combinedActivities);
       } catch (error) {
         console.error("Error fetching audit activities:", error);
       } finally {
@@ -88,6 +145,30 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
       return formatDistanceToNow(date, { addSuffix: true, locale: id });
     } catch (error) {
       return dateString;
+    }
+  };
+
+  // Function to log user activity (can be called from other components)
+  const logUserActivity = async (
+    userId: string, 
+    activityType: 'create_audit' | 'delete_audit' | 'export_report' | 'update_profile' | 'change_password', 
+    description: string
+  ) => {
+    try {
+      // Try to insert into user_activities table
+      const { error } = await supabase
+        .from('user_activities')
+        .insert({
+          user_id: userId,
+          activity_type: activityType,
+          description
+        });
+        
+      if (error) {
+        console.error("Failed to log user activity:", error);
+      }
+    } catch (err) {
+      console.error("Error logging user activity:", err);
     }
   };
 
@@ -131,6 +212,30 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
       )}
     </div>
   );
+};
+
+// Export the logUserActivity function so it can be used by other components
+export const logUserActivity = async (
+  userId: string, 
+  activityType: 'create_audit' | 'delete_audit' | 'export_report' | 'update_profile' | 'change_password', 
+  description: string
+) => {
+  try {
+    // Try to insert into user_activities table
+    const { error } = await supabase
+      .from('user_activities')
+      .insert({
+        user_id: userId,
+        activity_type: activityType,
+        description
+      });
+      
+    if (error) {
+      console.error("Failed to log user activity:", error);
+    }
+  } catch (err) {
+    console.error("Error logging user activity:", err);
+  }
 };
 
 export const RecentActivitiesFooter: React.FC = () => {
