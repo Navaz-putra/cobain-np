@@ -3,9 +3,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download, Loader2 } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from "@/contexts/AuthContext";
-import { logUserActivity } from '@/lib/activity-logger';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PDFReportProps {
   auditId: string;
@@ -28,7 +26,6 @@ export const PDFReport: React.FC<PDFReportProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
-  const { user } = useAuth();
 
   const handleGenerateReport = async () => {
     try {
@@ -39,15 +36,6 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       });
       
       await generateAuditReport(auditId);
-      
-      // Log this activity if user is authenticated
-      if (user?.id) {
-        await logUserActivity(
-          user.id,
-          'export_report',
-          `Mengekspor laporan audit ID: ${auditId}`
-        );
-      }
       
       toast({
         title: "Berhasil",

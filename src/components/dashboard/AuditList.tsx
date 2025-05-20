@@ -7,8 +7,6 @@ import { Info, ChevronRight, Clock, ClipboardCheck, FileCheck, Trash2 } from "lu
 import { PDFReport } from "@/components/PDFReport";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { logUserActivity } from '@/lib/activity-logger';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,26 +146,9 @@ interface AuditListProps {
 
 export const AuditList: React.FC<AuditListProps> = ({ audits, loading, setAudits }) => {
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const handleDeleteAudit = async (auditId: string) => {
     try {
-      // Get audit info before deletion for logging
-      let auditTitle = "Unknown audit";
-      try {
-        const { data: auditInfo } = await supabase
-          .from('audits')
-          .select('title')
-          .eq('id', auditId)
-          .single();
-          
-        if (auditInfo?.title) {
-          auditTitle = auditInfo.title;
-        }
-      } catch (err) {
-        console.error("Error fetching audit title before deletion:", err);
-      }
-      
       // Delete audit answers first (due to foreign key constraint)
       const { error: answersError } = await supabase
         .from('audit_answers')
@@ -187,15 +168,6 @@ export const AuditList: React.FC<AuditListProps> = ({ audits, loading, setAudits
       // Update UI by removing the deleted audit
       if (setAudits) {
         setAudits(prevAudits => prevAudits.filter(audit => audit.id !== auditId));
-      }
-      
-      // Log this activity
-      if (user?.id) {
-        await logUserActivity(
-          user.id,
-          'delete_audit',
-          `Menghapus audit "${auditTitle}"`
-        );
       }
       
       toast({

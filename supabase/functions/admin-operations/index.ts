@@ -13,8 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Admin operation request received");
-    
     // Create a Supabase client with the Auth Admin API key
     const supabaseAdmin = createClient(
       supabaseUrl,
@@ -29,11 +27,7 @@ serve(async (req) => {
 
     // Parse the request body first
     const requestData = await req.json();
-    console.log("Request data received:", JSON.stringify(requestData));
-    
     const { action, userData, userId } = requestData;
-    
-    console.log("Requested action:", action);
     
     // Special handling for superadmin
     const isSuperAdmin = requestData.superadmin === true;
@@ -45,77 +39,27 @@ serve(async (req) => {
     
     // Get the authorization header from the request (if available)
     const authHeader = req.headers.get('Authorization');
-    console.log("Auth header present:", !!authHeader);
     
     // Verify superadmin first if that's the claim
     if (isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
       isAdmin = true;
-      console.log("Superadmin access granted based on email");
+      console.log("Superadmin access granted");
     }
     // If there's an auth header, verify the user
-    else if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        console.log("Token length:", token.length);
-        
-        const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-        
-        if (userError) {
-          console.error("Error verifying user with token:", userError);
-          return new Response(
-            JSON.stringify({ error: 'Authentication error: ' + userError.message }),
-            {
-              status: 401,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
-        }
-        
-        if (userData?.user) {
-          user = userData.user;
-          console.log("Authenticated user:", user.email);
-          // Check if user is an admin
-          isAdmin = user.email === hardcodedSuperadminEmail || 
-                   user.user_metadata?.role === 'admin';
-                   
-          console.log("Is admin:", isAdmin);
-        } else {
-          console.log("No user data returned from getUser call");
-        }
-      } catch (tokenError) {
-        console.error("Error processing token:", tokenError);
-        return new Response(
-          JSON.stringify({ error: 'Token processing error: ' + tokenError.message }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-    } else if (!authHeader && isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
-      // Secondary check for superadmin without auth header
-      isAdmin = true;
-      console.log("Superadmin access granted without auth header");
-    } else {
-      console.log("No authentication provided");
-      // If the action is listUsers and it's a superadmin request, special handling
-      if (action === 'listUsers' && isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
-        isAdmin = true;
-        console.log("Special case: allowing listUsers for hardcoded superadmin without auth");
-      } else {
-        return new Response(
-          JSON.stringify({ error: 'Authentication required' }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
+    else if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+      
+      if (!userError && userData?.user) {
+        user = userData.user;
+        // Check if user is an admin
+        isAdmin = user.email === hardcodedSuperadminEmail || 
+                 user.user_metadata?.role === 'admin';
       }
     }
     
     // Allow operations only for verified admins
     if (!isAdmin) {
-      console.log("Unauthorized - Admin access required");
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Admin access required' }),
         {
@@ -125,7 +69,7 @@ serve(async (req) => {
       )
     }
 
-    let data = null, error = null;
+    let data, error;
 
     // Perform the requested admin action
     switch (action) {
@@ -248,24 +192,9 @@ serve(async (req) => {
 
       case 'listUsers':
         console.log("Listing users, isAdmin:", isAdmin);
-        try {
-          const listResponse = await supabaseAdmin.auth.admin.listUsers();
-          console.log("List users response received");
-          
-          if (listResponse.error) {
-            error = listResponse.error;
-            console.error("Error listing users:", error);
-          } else {
-            // Always return users in a consistent format
-            data = { 
-              users: listResponse.data.users || [] 
-            };
-            console.log(`Found ${data.users.length} users`);
-          }
-        } catch (listError) {
-          console.error("Exception when listing users:", listError);
-          error = { message: listError.toString() };
-        }
+        const listResponse = await supabaseAdmin.auth.admin.listUsers();
+        data = listResponse.data;
+        error = listResponse.error;
         break;
         
       case 'getUserInfo':
@@ -279,19 +208,9 @@ serve(async (req) => {
             }
           )
         }
-        
-        try {
-          const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
-          
-          if (userResponse.error) {
-            error = userResponse.error;
-          } else {
-            data = { user: userResponse.data.user };
-          }
-        } catch (getUserError) {
-          console.error("Exception when getting user info:", getUserError);
-          error = { message: getUserError.toString() };
-        }
+        const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
+        data = { user: userResponse.data.user };
+        error = userResponse.error;
         break;
 
       default:
@@ -305,7 +224,6 @@ serve(async (req) => {
     }
 
     if (error) {
-      console.error("Error in admin operation:", error);
       return new Response(
         JSON.stringify({ error: error.message }),
         {
@@ -315,7 +233,6 @@ serve(async (req) => {
       )
     }
 
-    console.log("Admin operation completed successfully");
     return new Response(
       JSON.stringify({ data }),
       {

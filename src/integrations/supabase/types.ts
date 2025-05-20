@@ -158,30 +158,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_activities: {
-        Row: {
-          activity_type: string
-          created_at: string
-          description: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          activity_type: string
-          created_at?: string
-          description: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          activity_type?: string
-          created_at?: string
-          description?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

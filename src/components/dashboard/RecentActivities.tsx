@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileCheck, ClipboardCheck, BarChart, Activity, Trash2, Download, UserCog, FilePlus } from "lucide-react";
+import { FileCheck, ClipboardCheck, BarChart, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
@@ -49,24 +49,6 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
 
         if (error) throw error;
 
-        // Get user's other activities from the user_activities table
-        let activityData: any[] = [];
-        try {
-          // Direct query to fetch user activities
-          const { data: activityLogs, error: activityError } = await supabase
-            .from('user_activities')
-            .select('*')
-            .eq('user_id', currentUserId)
-            .order('created_at', { ascending: false })
-            .limit(10);
-            
-          if (!activityError && activityLogs) {
-            activityData = activityLogs;
-          }
-        } catch (activityFetchError) {
-          console.error("Error fetching user activities:", activityFetchError);
-        }
-
         // Convert the audit data to activity items
         const auditActivities: ActivityItem[] = (data || []).map(audit => {
           let action = '';
@@ -88,48 +70,7 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
           };
         });
 
-        // Process other activity logs if they exist
-        const otherActivities: ActivityItem[] = activityData.map(activity => {
-          let icon = Activity;
-          
-          // Set appropriate icon based on activity type
-          switch(activity.activity_type) {
-            case 'create_audit':
-              icon = FilePlus;
-              break;
-            case 'delete_audit':
-              icon = Trash2;
-              break;
-            case 'export_report':
-              icon = Download;
-              break;
-            case 'update_profile':
-            case 'change_password':
-              icon = UserCog;
-              break;
-            default:
-              icon = Activity;
-          }
-          
-          return {
-            id: activity.id,
-            action: activity.description,
-            date: formatTimeAgo(activity.created_at),
-            icon
-          };
-        });
-
-        // Combine all activities and sort by date (most recent first)
-        const combinedActivities = [...auditActivities, ...otherActivities]
-          .sort((a, b) => {
-            // Simple sort by date
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            return dateB.getTime() - dateA.getTime();
-          })
-          .slice(0, 10); // Limit to 10 most recent activities
-          
-        setActivities(combinedActivities);
+        setActivities(auditActivities);
       } catch (error) {
         console.error("Error fetching audit activities:", error);
       } finally {

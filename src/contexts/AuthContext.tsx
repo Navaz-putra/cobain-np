@@ -34,48 +34,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           };
           setUser(userData);
         } else {
-          // Check if we have a superadmin in localStorage
-          const superadminData = localStorage.getItem("cobain_user");
-          if (superadminData) {
-            try {
-              const parsedData = JSON.parse(superadminData);
-              if (parsedData.email === "navazputra@students.amikom.ac.id") {
-                // Restore superadmin user from localStorage
-                setUser({
-                  id: "superadmin-id",
-                  email: "navazputra@students.amikom.ac.id",
-                  app_metadata: {},
-                  user_metadata: { name: "Super Admin", role: "admin" },
-                  aud: "authenticated",
-                  created_at: new Date().toISOString(),
-                  name: "Super Admin",
-                  role: "admin",
-                } as User & { name?: string; role?: string });
-                
-                // Create a mock session for superadmin
-                setSession({
-                  access_token: "super-admin-token",
-                  refresh_token: "mock-refresh-token",
-                  expires_in: 3600,
-                  expires_at: Math.floor(Date.now() / 1000) + 3600,
-                  token_type: "bearer",
-                  user: {
-                    id: "superadmin-id",
-                    email: "navazputra@students.amikom.ac.id",
-                    app_metadata: {},
-                    user_metadata: { name: "Super Admin", role: "admin" },
-                    aud: "authenticated",
-                    created_at: new Date().toISOString(),
-                  } as User
-                } as Session);
-                
-                return;
-              }
-            } catch (error) {
-              console.error("Error parsing superadmin data:", error);
-              localStorage.removeItem("cobain_user");
-            }
-          }
           setUser(null);
         }
       }
@@ -93,51 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
         setUser(userData);
       } else {
-        // Check if we have a superadmin in localStorage
-        const superadminData = localStorage.getItem("cobain_user");
-        if (superadminData) {
-          try {
-            const parsedData = JSON.parse(superadminData);
-            if (parsedData.email === "navazputra@students.amikom.ac.id") {
-              // Restore superadmin user from localStorage
-              setUser({
-                id: "superadmin-id",
-                email: "navazputra@students.amikom.ac.id",
-                app_metadata: {},
-                user_metadata: { name: "Super Admin", role: "admin" },
-                aud: "authenticated",
-                created_at: new Date().toISOString(),
-                name: "Super Admin",
-                role: "admin",
-              } as User & { name?: string; role?: string });
-              
-              // Create a mock session for superadmin
-              setSession({
-                access_token: "super-admin-token",
-                refresh_token: "mock-refresh-token",
-                expires_in: 3600,
-                expires_at: Math.floor(Date.now() / 1000) + 3600,
-                token_type: "bearer",
-                user: {
-                  id: "superadmin-id",
-                  email: "navazputra@students.amikom.ac.id",
-                  app_metadata: {},
-                  user_metadata: { name: "Super Admin", role: "admin" },
-                  aud: "authenticated",
-                  created_at: new Date().toISOString(),
-                } as User
-              } as Session);
-            } else {
-              setUser(null);
-            }
-          } catch (error) {
-            console.error("Error parsing superadmin data:", error);
-            localStorage.removeItem("cobain_user");
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
+        setUser(null);
       }
       setLoading(false);
     });
@@ -173,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Create a mock session for superadmin
         const mockSession = {
-          access_token: "super-admin-token",
+          access_token: "mock-access-token-for-superadmin",
           refresh_token: "mock-refresh-token",
           expires_in: 3600,
           expires_at: Math.floor(Date.now() / 1000) + 3600,
