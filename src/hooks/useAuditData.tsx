@@ -17,8 +17,13 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
     const fetchAudits = async () => {
       try {
         setLoading(true);
+        console.log("Fetching audits, isAdmin:", isAdmin, "userId:", userId);
         
-        let query = supabase.from("audits").select("*");
+        let query = supabase.from("audits").select(`
+          *,
+          audit_domains(*),
+          audit_answers(*)
+        `);
         
         // If not admin and userId is provided, filter by user_id
         if (!isAdmin && userId) {
@@ -33,6 +38,8 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
         if (error) {
           throw error;
         }
+        
+        console.log("Raw audit data:", data);
         
         // Fetch audit progress and domains for each audit
         const auditsWithDetails = await Promise.all((data || []).map(async (audit) => {
@@ -60,6 +67,7 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
           };
         }));
         
+        console.log("Audits with details:", auditsWithDetails);
         setAudits(auditsWithDetails);
       } catch (error) {
         console.error("Error fetching audits:", error);
@@ -77,25 +85,40 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
 
   const getAuditProgress = async (auditId: string) => {
     try {
-      // Get total questions
-      const { data: questionsData, error: questionsError } = await supabase
-        .from("cobit_questions")
-        .select("count");
+      // Get total questions for this audit
+      const { data: domainData } = await supabase
+        .from("audit_domains")
+        .select("domain_id")
+        .eq("audit_id", auditId)
+        .eq("selected", true);
         
-      if (questionsError) throw questionsError;
+      if (!domainData || domainData.length === 0) {
+        return 0;
+      }
       
-      // Get answered questions
-      const { data: answersData, error: answersError } = await supabase
+      const selectedDomains = domainData.map(d => d.domain_id);
+      
+      // Count total questions for selected domains
+      const { count: totalQuestions, error: questionsError } = await supabase
+        .from("cobit_questions")
+        .select("*", { count: 'exact', head: true })
+        .in("domain_id", selectedDomains);
+        
+      if (questionsError) {
+        throw questionsError;
+      }
+      
+      // Count answered questions for this audit
+      const { count: answeredQuestions, error: answersError } = await supabase
         .from("audit_answers")
-        .select("count")
+        .select("*", { count: 'exact', head: true })
         .eq("audit_id", auditId);
         
-      if (answersError) throw answersError;
+      if (answersError) {
+        throw answersError;
+      }
       
-      const totalQuestions = parseInt(questionsData[0]?.count as unknown as string) || 0;
-      const answeredQuestions = parseInt(answersData[0]?.count as unknown as string) || 0;
-      
-      return totalQuestions > 0 ? (answeredQuestions / totalQuestions) * 100 : 0;
+      return totalQuestions && totalQuestions > 0 ? (answeredQuestions || 0) / totalQuestions * 100 : 0;
     } catch (error) {
       console.error("Error calculating audit progress:", error);
       return 0;

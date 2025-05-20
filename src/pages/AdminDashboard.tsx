@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminDashboardComponents } from "@/components/admin/AdminDashboardComponents";
+import { useAuditData } from "@/hooks/useAuditData";
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
@@ -12,11 +13,10 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [audits, setAudits] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingAudits, setLoadingAudits] = useState(true);
   const [tokenError, setTokenError] = useState<string | null>(null);
+  const { audits, loading: loadingAudits } = useAuditData({ isAdmin: true });
 
   // Hardcoded superadmin email
   const hardcodedSuperadminEmail = "navazputra@students.amikom.ac.id";
@@ -133,43 +133,6 @@ export default function AdminDashboard() {
       fetchUsers();
     }
   }, [toast, session?.access_token, user, hardcodedSuperadminEmail]);
-
-  // Fetch all audits from database
-  useEffect(() => {
-    const fetchAudits = async () => {
-      try {
-        setLoadingAudits(true);
-        
-        const { data, error } = await supabase
-          .from('audits')
-          .select(`
-            *,
-            audit_domains(*),
-            audit_answers(*)
-          `)
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          throw error;
-        }
-
-        setAudits(data || []);
-      } catch (error) {
-        console.error('Error fetching audits:', error);
-        toast({
-          title: 'Error',
-          description: 'Gagal mengambil data audit',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoadingAudits(false);
-      }
-    };
-
-    if (user && (user.role === "admin" || user.email === hardcodedSuperadminEmail)) {
-      fetchAudits();
-    }
-  }, [toast, user, hardcodedSuperadminEmail]);
 
   return (
     <div className="p-6">

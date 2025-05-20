@@ -18,12 +18,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  FileText, Search, CheckCircle, CircleX 
+  FileText, Search, CheckCircle, CircleX, Loader2
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { PDFReport } from "@/components/PDFReport";
+import { useAuditData } from "@/hooks/useAuditData";
 
 interface ReportManagementProps {
   hardcodedSuperadminEmail: string;
@@ -33,29 +34,18 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
   const { user, session } = useAuth();
   const { toast } = useToast();
   const [searchAudit, setSearchAudit] = useState("");
-  const [audits, setAudits] = useState<any[]>([]);
-  const [loadingAudits, setLoadingAudits] = useState(true);
+  const { audits, loading: loadingAudits, setAudits } = useAuditData({ isAdmin: true });
+  const [auditWithUsers, setAuditWithUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch all audits from database
+  // Fetch additional user info for each audit
   useEffect(() => {
-    const fetchAudits = async () => {
+    const fetchUserInfo = async () => {
       try {
-        setLoadingAudits(true);
-        
-        const { data, error } = await supabase
-          .from('audits')
-          .select(`
-            *,
-            audit_domains(*),
-            audit_answers(*)
-          `)
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          throw error;
-        }
+        setLoading(true);
+        if (!audits.length) return;
 
-        const auditsWithUserInfo = await Promise.all((data || []).map(async (audit) => {
+        const auditsWithUserInfo = await Promise.all(audits.map(async (audit) => {
           let userEmail = "Unknown";
           let userName = "Unknown";
           
@@ -111,72 +101,38 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
             userName = "Super Admin";
           }
           
-          // Calculate completion status more accurately
-          const totalQuestions = await getTotalQuestionsForAudit(audit);
-          const answeredQuestions = audit.audit_answers?.length || 0;
-          const completionPercentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
-          
           return {
             ...audit,
             user: { 
               email: userEmail,
               name: userName
-            },
-            completionPercentage,
-            totalQuestions,
-            answeredQuestions
+            }
           };
         }));
 
-        setAudits(auditsWithUserInfo);
         console.log("Audits with user info:", auditsWithUserInfo);
+        setAuditWithUsers(auditsWithUserInfo);
       } catch (error) {
-        console.error('Error fetching audits:', error);
+        console.error('Error processing audit data:', error);
         toast({
           title: 'Error',
-          description: 'Gagal mengambil data audit',
+          description: 'Gagal memproses data audit dengan informasi pengguna',
           variant: 'destructive'
         });
       } finally {
-        setLoadingAudits(false);
+        setLoading(false);
       }
     };
 
-    if (user && (user.role === "admin" || user.email === hardcodedSuperadminEmail)) {
-      fetchAudits();
+    if (audits.length > 0) {
+      fetchUserInfo();
+    } else {
+      setLoading(loadingAudits);
     }
-  }, [toast, session?.access_token, user, hardcodedSuperadminEmail]);
-
-  // Calculate total questions for an audit based on selected domains
-  const getTotalQuestionsForAudit = async (audit) => {
-    try {
-      // Get selected domains for this audit
-      const selectedDomains = audit.audit_domains
-        ?.filter(domain => domain.selected)
-        .map(domain => domain.domain_id) || [];
-      
-      if (selectedDomains.length === 0) return 0;
-      
-      // Get count of questions for these domains
-      const { count, error } = await supabase
-        .from('cobit_questions')
-        .select('*', { count: 'exact', head: true })
-        .in('domain_id', selectedDomains);
-      
-      if (error) {
-        console.error("Error counting questions:", error);
-        return 0;
-      }
-      
-      return count || 0;
-    } catch (err) {
-      console.error("Error calculating total questions:", err);
-      return 0;
-    }
-  };
+  }, [audits, session?.access_token, user, hardcodedSuperadminEmail, toast, loadingAudits]);
 
   // Filter audits based on search
-  const filteredAudits = audits.filter(audit => 
+  const filteredAudits = auditWithUsers.filter(audit => 
     audit.title?.toLowerCase().includes(searchAudit.toLowerCase()) ||
     audit.organization?.toLowerCase().includes(searchAudit.toLowerCase()) ||
     (audit.user?.email || "").toLowerCase().includes(searchAudit.toLowerCase()) ||
@@ -203,12 +159,13 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
             </div>
           </div>
           
-          {loadingAudits ? (
-            <div className="text-center py-8">
+          {loading ? (
+            <div className="text-center py-8 flex flex-col items-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
               <p>Memuat data audit...</p>
             </div>
           ) : filteredAudits.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -257,11 +214,11 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
                         <div className="w-full bg-muted rounded-full h-2.5">
                           <div 
                             className="bg-cobain-blue h-2.5 rounded-full" 
-                            style={{ width: `${audit.completionPercentage}%` }}
+                            style={{ width: `${audit.progress || 0}%` }}
                           ></div>
                         </div>
                         <div className="text-xs mt-1">
-                          {audit.completionPercentage}% ({audit.answeredQuestions}/{audit.totalQuestions})
+                          {audit.progress || 0}%
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
