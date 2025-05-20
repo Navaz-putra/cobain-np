@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 
                 // Create a mock session for superadmin
                 setSession({
-                  access_token: "mock-access-token-for-superadmin",
+                  access_token: "super-admin-token",
                   refresh_token: "mock-refresh-token",
                   expires_in: 3600,
                   expires_at: Math.floor(Date.now() / 1000) + 3600,
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               
               // Create a mock session for superadmin
               setSession({
-                access_token: "mock-access-token-for-superadmin",
+                access_token: "super-admin-token",
                 refresh_token: "mock-refresh-token",
                 expires_in: 3600,
                 expires_at: Math.floor(Date.now() / 1000) + 3600,
@@ -173,7 +173,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Create a mock session for superadmin
         const mockSession = {
-          access_token: "mock-access-token-for-superadmin",
+          access_token: "super-admin-token",
           refresh_token: "mock-refresh-token",
           expires_in: 3600,
           expires_at: Math.floor(Date.now() / 1000) + 3600,
