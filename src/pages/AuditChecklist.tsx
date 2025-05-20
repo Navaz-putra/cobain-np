@@ -159,6 +159,7 @@ export default function AuditChecklist() {
   const [answers, setAnswers] = useState<Record<string, { maturity_level: number; notes: string | null }>>({});
   const [missingAnswers, setMissingAnswers] = useState<string[]>([]);
   const [remainingDomains, setRemainingDomains] = useState<number>(0);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   
   // New states for domain selection
   const [showDomainSelector, setShowDomainSelector] = useState(false);
@@ -170,6 +171,9 @@ export default function AuditChecklist() {
   
   // References for question elements to enable scrolling
   const questionRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
+  
+  // Add a debounce timer for auto-save
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Fetch audit data and questions from Supabase
   useEffect(() => {
@@ -440,6 +444,15 @@ export default function AuditChecklist() {
       calculateRemainingDomains(filteredDomains, newAnswers);
     }
     
+    // Auto-save after a short delay
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveAnswers();
+    }, 1000);
+    
     // Scroll to the next question after a short delay
     setTimeout(() => {
       // Find the next question reference
@@ -456,10 +469,6 @@ export default function AuditChecklist() {
         }
       }
     }, 300); // Small delay to ensure the UI updates first
-    
-    // Optionally save to database in background for immediate persistence
-    // This is commented out as it might cause performance issues with many rapid selections
-    // await saveAnswerToDatabase(questionId, maturityLevel, newAnswers[questionId]?.notes || null);
   };
   
   // Optional function to save individual answers without updating the whole batch
@@ -499,8 +508,69 @@ export default function AuditChecklist() {
         ? { ...q, answer: { maturity_level: newAnswers[questionId]?.maturity_level || 0, notes: notes }}
         : q
     ));
+    
+    // Auto-save notes after a longer delay (to avoid saving on every keystroke)
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveAnswers();
+    }, 2000);
   };
 
+  // New function for auto-saving
+  const autoSaveAnswers = async () => {
+    if (!auditId) return;
+    
+    try {
+      setSaving(true);
+      
+      // Prepare the data for upsert
+      const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
+        audit_id: auditId,
+        question_id: questionId,
+        maturity_level: answer.maturity_level,
+        notes: answer.notes
+      }));
+      
+      if (answersToSave.length === 0) {
+        setSaving(false);
+        return;
+      }
+      
+      // Upsert answers (insert if not exists, update if exists)
+      const { error } = await supabase
+        .from("audit_answers")
+        .upsert(answersToSave, { onConflict: 'audit_id,question_id' });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Update last saved timestamp
+      setLastSaved(new Date());
+      
+      // Optional: Show a subtle toast notification
+      toast({
+        title: "Auto-saved",
+        description: "Kemajuan audit disimpan otomatis",
+        duration: 2000,  // shorter duration for less intrusive notification
+      });
+    } catch (error) {
+      console.error("Error auto-saving answers:", error);
+      // Only show error toast for auto-save failures
+      toast({
+        title: "Error",
+        description: "Gagal menyimpan otomatis, silakan coba simpan manual",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Keep the original saveAnswers function for manual saves
   const saveAnswers = async () => {
     if (!auditId) return;
     
@@ -535,6 +605,9 @@ export default function AuditChecklist() {
           throw error;
         }
       }
+      
+      // Update last saved timestamp
+      setLastSaved(new Date());
       
       toast({
         title: "Sukses",
@@ -575,8 +648,8 @@ export default function AuditChecklist() {
       return;
     }
     
-    // Save answers automatically when going to next subdomain
-    saveAnswers();
+    // Auto-save answers when going to next subdomain
+    autoSaveAnswers();
     
     const currentDomainObj = filteredDomains.find(d => d.id === currentDomain);
     if (!currentDomainObj) return;
@@ -604,6 +677,9 @@ export default function AuditChecklist() {
   };
 
   const goToPrevSubdomain = () => {
+    // Auto-save answers when going to previous subdomain
+    autoSaveAnswers();
+    
     if (currentSubdomainIndex > 0) {
       setCurrentSubdomainIndex(currentSubdomainIndex - 1);
     } else {
@@ -746,6 +822,11 @@ export default function AuditChecklist() {
               <CardTitle>{auditData?.title || "Audit"}</CardTitle>
               <CardDescription className="mt-1">
                 Penilaian tingkat kematangan berdasarkan COBIT 2019
+                {lastSaved && (
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    Terakhir disimpan: {lastSaved.toLocaleTimeString()}
+                  </span>
+                )}
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -812,7 +893,7 @@ export default function AuditChecklist() {
                 disabled={saving}
               >
                 <Save className="mr-2 h-4 w-4" />
-                {saving ? "Menyimpan..." : "Simpan Kemajuan"}
+                {saving ? "Menyimpan..." : "Simpan Manual"}
               </Button>
             </div>
           </div>
@@ -856,6 +937,8 @@ export default function AuditChecklist() {
                   <Select
                     value={`${currentDomain}-${currentSubdomainIndex}`}
                     onValueChange={(value) => {
+                      // Auto-save before changing domain/subdomain
+                      autoSaveAnswers();
                       const [domainId, subdomainIdx] = value.split('-');
                       setCurrentDomain(domainId);
                       setCurrentSubdomainIndex(parseInt(subdomainIdx));
