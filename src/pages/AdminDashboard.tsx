@@ -6,6 +6,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminDashboardComponents } from "@/components/admin/AdminDashboardComponents";
 import { useAuditData } from "@/hooks/useAuditData";
+import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
+import { AccountSettings } from "@/components/dashboard/AccountSettings";
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
@@ -17,6 +20,7 @@ export default function AdminDashboard() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [tokenError, setTokenError] = useState<string | null>(null);
   const { audits, loading: loadingAudits } = useAuditData({ isAdmin: true });
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
 
   // Hardcoded superadmin email
   const hardcodedSuperadminEmail = "navazputra@students.amikom.ac.id";
@@ -136,7 +140,18 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Dasbor Admin</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Dasbor Admin</h1>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="flex items-center gap-2"
+          onClick={() => setAccountSettingsOpen(true)}
+        >
+          <Settings size={16} />
+          Pengaturan Akun
+        </Button>
+      </div>
       
       <AdminDashboardComponents
         userCount={users.length}
@@ -144,6 +159,12 @@ export default function AdminDashboard() {
         auditCount={audits.length}
         showTokenError={!!tokenError}
         tokenErrorMessage={tokenError || ""}
+      />
+
+      {/* Account Settings Dialog */}
+      <AccountSettings 
+        open={accountSettingsOpen} 
+        onOpenChange={setAccountSettingsOpen} 
       />
     </div>
   );
