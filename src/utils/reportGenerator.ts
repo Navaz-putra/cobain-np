@@ -1,4 +1,3 @@
-
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
 import autoTable from 'jspdf-autotable';
@@ -125,6 +124,46 @@ export const generateAuditReport = async (auditId: string) => {
     if (auditError) throw auditError;
     if (!auditData) throw new Error("Data audit tidak ditemukan");
 
+    // Fetch auditor information
+    let auditorName = "Unknown";
+    let auditorEmail = "Unknown";
+    let auditorPosition = "Unknown";
+    let auditorDepartment = "Unknown";
+    
+    if (auditData.user_id && auditData.user_id !== "superadmin-id") {
+      try {
+        // Fetch auditor information based on user_id
+        const { data: userData, error: userError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", auditData.user_id)
+          .single();
+          
+        if (!userError && userData) {
+          auditorName = userData.full_name || "Unknown";
+          auditorEmail = userData.email || "Unknown";
+        }
+        
+        // Check if auditor_info exists in audit data
+        if (auditData.auditor_info) {
+          const auditorInfo = auditData.auditor_info;
+          auditorName = auditorInfo.name || auditorName;
+          auditorEmail = auditorInfo.email || auditorEmail;
+          auditorPosition = auditorInfo.position || "Unknown";
+          auditorDepartment = auditorInfo.department || "Unknown";
+        }
+      } catch (error) {
+        console.error("Error fetching auditor data:", error);
+      }
+    } else if (auditData.auditor_info) {
+      // Get auditor info directly from audit data
+      const auditorInfo = auditData.auditor_info;
+      auditorName = auditorInfo.name || auditorName;
+      auditorEmail = auditorInfo.email || auditorEmail;
+      auditorPosition = auditorInfo.position || "Unknown";
+      auditorDepartment = auditorInfo.department || "Unknown";
+    }
+
     // Fetch all related audit questions and answers
     const { data: answers, error: answersError } = await supabase
       .from("audit_answers")
@@ -181,21 +220,32 @@ export const generateAuditReport = async (auditId: string) => {
     pdf.text(`Title / Judul: ${auditData.title}`, 20, 45);
     pdf.text(`Scope / Lingkup: ${auditData.scope || "Tidak ditentukan"}`, 20, 50);
 
-    // Add Executive Summary
+    // Add auditor information
+    pdf.setFontSize(12);
+    pdf.setTextColor(30, 30, 30);
+    pdf.text("Auditor Information / Informasi Auditor", 20, 60);
+    pdf.setFontSize(10);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text(`Name / Nama: ${auditorName}`, 25, 67);
+    pdf.text(`Email: ${auditorEmail}`, 25, 72);
+    pdf.text(`Position / Jabatan: ${auditorPosition}`, 25, 77);
+    pdf.text(`Department / Departemen: ${auditorDepartment}`, 25, 82);
+
+    // Add Executive Summary - adjust y position to account for auditor info
     pdf.setFontSize(14);
     pdf.setTextColor(30, 30, 30);
-    pdf.text("Executive Summary / Ringkasan Eksekutif", 20, 60);
+    pdf.text("Executive Summary / Ringkasan Eksekutif", 20, 92);
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
     const summary = generateExecutiveSummary(domainsData);
     const summaryLines = pdf.splitTextToSize(summary, 170);
-    pdf.text(summaryLines, 20, 70);
+    pdf.text(summaryLines, 20, 102);
 
-    // Add maturity level explanation
+    // Add maturity level explanation - adjust y position
     pdf.setFontSize(11);
-    pdf.text("Maturity Level Scale / Skala Tingkat Kematangan:", 20, summaryLines.length * 5 + 75);
+    pdf.text("Maturity Level Scale / Skala Tingkat Kematangan:", 20, summaryLines.length * 5 + 105);
     
-    let yPosition = summaryLines.length * 5 + 80;
+    let yPosition = summaryLines.length * 5 + 110;
     Object.entries(maturityLevelDescriptions).forEach(([level, { name, description }]) => {
       pdf.setFontSize(10);
       pdf.setTextColor(40, 40, 40);
