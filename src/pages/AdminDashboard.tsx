@@ -73,24 +73,33 @@ export default function AdminDashboard() {
         
         // Special case for superadmin user - if it's the hardcoded superadmin
         if (user?.email === hardcodedSuperadminEmail) {
-          const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              action: "listUsers",
-              superadmin: true,
-              superadminEmail: hardcodedSuperadminEmail
-            })
-          });
-          
-          const result = await response.json();
-          
-          if (response.ok) {
-            setUsers(result.data?.users || []);
-          } else {
-            throw new Error(result.error || "Failed to fetch users");
+          try {
+            const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                action: "listUsers",
+                superadmin: true,
+                superadminEmail: hardcodedSuperadminEmail
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.data?.users) {
+              setUsers(result.data.users || []);
+            } else {
+              throw new Error(result.error || "Failed to fetch users");
+            }
+          } catch (error) {
+            console.error('Error fetching users:', error);
+            throw error;
           }
           
           setLoadingUsers(false);
@@ -114,10 +123,14 @@ export default function AdminDashboard() {
           })
         });
         
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
         const result = await response.json();
         
-        if (response.ok) {
-          setUsers(result.data?.users || []);
+        if (result.data?.users) {
+          setUsers(result.data.users || []);
         } else {
           throw new Error(result.error || "Failed to fetch users");
         }
@@ -128,6 +141,8 @@ export default function AdminDashboard() {
           description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
           variant: 'destructive'
         });
+        // Set empty array to prevent null reference errors
+        setUsers([]);
       } finally {
         setLoadingUsers(false);
       }

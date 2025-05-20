@@ -193,8 +193,11 @@ serve(async (req) => {
       case 'listUsers':
         console.log("Listing users, isAdmin:", isAdmin);
         const listResponse = await supabaseAdmin.auth.admin.listUsers();
-        data = listResponse.data;
-        error = listResponse.error;
+        if (listResponse.error) {
+          error = listResponse.error;
+        } else {
+          data = { users: listResponse.data.users || [] };
+        }
         break;
         
       case 'getUserInfo':
@@ -209,8 +212,12 @@ serve(async (req) => {
           )
         }
         const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
-        data = { user: userResponse.data.user };
-        error = userResponse.error;
+        
+        if (userResponse.error) {
+          error = userResponse.error;
+        } else {
+          data = { user: userResponse.data.user };
+        }
         break;
 
       default:
@@ -224,6 +231,7 @@ serve(async (req) => {
     }
 
     if (error) {
+      console.error("Error in admin operation:", error);
       return new Response(
         JSON.stringify({ error: error.message }),
         {
