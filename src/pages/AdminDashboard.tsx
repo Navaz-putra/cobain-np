@@ -9,7 +9,6 @@ import { useAuditData } from "@/hooks/useAuditData";
 import { Button } from "@/components/ui/button";
 import { Settings, RefreshCcw } from "lucide-react";
 import { AccountSettings } from "@/components/dashboard/AccountSettings";
-import { UserManagement } from "@/components/admin/UserManagement";
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
@@ -83,7 +82,8 @@ export default function AdminDashboard() {
           const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${session?.access_token || ''}`
             },
             body: JSON.stringify({
               action: "listUsers",
@@ -222,15 +222,6 @@ export default function AdminDashboard() {
         showTokenError={!!tokenError}
         tokenErrorMessage={tokenError || ""}
       />
-
-      {/* User Management Component */}
-      {!tokenError && (
-        <div className="mt-6">
-          <UserManagement 
-            hardcodedSuperadminEmail={hardcodedSuperadminEmail} 
-          />
-        </div>
-      )}
 
       {/* Account Settings Dialog */}
       <AccountSettings 

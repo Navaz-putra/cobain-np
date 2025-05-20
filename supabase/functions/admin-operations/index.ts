@@ -50,7 +50,7 @@ serve(async (req) => {
     // Verify superadmin first if that's the claim
     if (isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
       isAdmin = true;
-      console.log("Superadmin access granted");
+      console.log("Superadmin access granted based on email");
     }
     // If there's an auth header, verify the user
     else if (authHeader) {
@@ -92,8 +92,18 @@ serve(async (req) => {
           }
         );
       }
+    } else if (isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
+      // Secondary check for superadmin without auth header - added for reliability
+      isAdmin = true;
+      console.log("Superadmin access granted without auth header");
     } else {
       console.log("No authentication provided");
+    }
+    
+    // Special case for specific actions that need access even without regular auth
+    if (action === 'listUsers' && isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
+      console.log("Allowing listUsers for hardcoded superadmin");
+      isAdmin = true;
     }
     
     // Allow operations only for verified admins
@@ -233,7 +243,7 @@ serve(async (req) => {
         console.log("Listing users, isAdmin:", isAdmin);
         try {
           const listResponse = await supabaseAdmin.auth.admin.listUsers();
-          console.log("List users response:", JSON.stringify(listResponse));
+          console.log("List users response received");
           
           if (listResponse.error) {
             error = listResponse.error;
