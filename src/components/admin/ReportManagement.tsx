@@ -111,9 +111,10 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
             userName = "Super Admin";
           }
           
-          const totalAnswers = audit.audit_answers?.length || 0;
-          const answerCount = totalAnswers;
-          const completionPercentage = answerCount > 0 ? 100 : 0;
+          // Calculate completion status more accurately
+          const totalQuestions = await getTotalQuestionsForAudit(audit);
+          const answeredQuestions = audit.audit_answers?.length || 0;
+          const completionPercentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
           
           return {
             ...audit,
@@ -121,11 +122,14 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
               email: userEmail,
               name: userName
             },
-            completionPercentage
+            completionPercentage,
+            totalQuestions,
+            answeredQuestions
           };
         }));
 
         setAudits(auditsWithUserInfo);
+        console.log("Audits with user info:", auditsWithUserInfo);
       } catch (error) {
         console.error('Error fetching audits:', error);
         toast({
@@ -143,18 +147,47 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
     }
   }, [toast, session?.access_token, user, hardcodedSuperadminEmail]);
 
+  // Calculate total questions for an audit based on selected domains
+  const getTotalQuestionsForAudit = async (audit) => {
+    try {
+      // Get selected domains for this audit
+      const selectedDomains = audit.audit_domains
+        ?.filter(domain => domain.selected)
+        .map(domain => domain.domain_id) || [];
+      
+      if (selectedDomains.length === 0) return 0;
+      
+      // Get count of questions for these domains
+      const { count, error } = await supabase
+        .from('cobit_questions')
+        .select('*', { count: 'exact', head: true })
+        .in('domain_id', selectedDomains);
+      
+      if (error) {
+        console.error("Error counting questions:", error);
+        return 0;
+      }
+      
+      return count || 0;
+    } catch (err) {
+      console.error("Error calculating total questions:", err);
+      return 0;
+    }
+  };
+
   // Filter audits based on search
   const filteredAudits = audits.filter(audit => 
-    audit.title.toLowerCase().includes(searchAudit.toLowerCase()) ||
-    audit.organization.toLowerCase().includes(searchAudit.toLowerCase()) ||
-    (audit.user?.email || "").toLowerCase().includes(searchAudit.toLowerCase())
+    audit.title?.toLowerCase().includes(searchAudit.toLowerCase()) ||
+    audit.organization?.toLowerCase().includes(searchAudit.toLowerCase()) ||
+    (audit.user?.email || "").toLowerCase().includes(searchAudit.toLowerCase()) ||
+    (audit.user?.name || "").toLowerCase().includes(searchAudit.toLowerCase())
   );
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle>Laporan Audit</CardTitle>
-        <CardDescription>Lihat dan ekspor semua laporan hasil audit</CardDescription>
+        <CardDescription>Lihat dan ekspor semua laporan hasil audit dari auditor</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col space-y-4">
@@ -191,9 +224,9 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
                 <TableBody>
                   {filteredAudits.map((audit) => (
                     <TableRow key={audit.id}>
-                      <TableCell className="font-medium">{audit.title}</TableCell>
-                      <TableCell>{audit.organization}</TableCell>
-                      <TableCell>{new Date(audit.audit_date).toLocaleDateString('id-ID')}</TableCell>
+                      <TableCell className="font-medium">{audit.title || "Tidak ada judul"}</TableCell>
+                      <TableCell>{audit.organization || "Tidak ada organisasi"}</TableCell>
+                      <TableCell>{audit.audit_date ? new Date(audit.audit_date).toLocaleDateString('id-ID') : "Tidak ada tanggal"}</TableCell>
                       <TableCell>
                         <div className="flex items-center">
                           {audit.status === "completed" ? (
@@ -209,15 +242,15 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
                           ) : (
                             <>
                               <CircleX className="mr-2 h-4 w-4 text-gray-500" />
-                              {audit.status}
+                              {audit.status || "Tidak diketahui"}
                             </>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span>{audit.user?.name || '-'}</span>
-                          <span className="text-xs text-muted-foreground">{audit.user?.email || '-'}</span>
+                          <span>{audit.user?.name || 'Tidak diketahui'}</span>
+                          <span className="text-xs text-muted-foreground">{audit.user?.email || 'Tidak ada email'}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -227,7 +260,9 @@ export const ReportManagement = ({ hardcodedSuperadminEmail }: ReportManagementP
                             style={{ width: `${audit.completionPercentage}%` }}
                           ></div>
                         </div>
-                        <div className="text-xs mt-1">{audit.completionPercentage}%</div>
+                        <div className="text-xs mt-1">
+                          {audit.completionPercentage}% ({audit.answeredQuestions}/{audit.totalQuestions})
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

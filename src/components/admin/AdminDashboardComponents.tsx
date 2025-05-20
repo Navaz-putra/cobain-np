@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -203,7 +202,7 @@ export const AdminDashboardComponents = ({
   const hardcodedSuperadminEmail = "navazputra@students.amikom.ac.id";
 
   // Set up event listeners for the quick action buttons
-  React.useEffect(() => {
+  useEffect(() => {
     const usersTabTrigger = document.getElementById("users-tab-trigger");
     const questionsTabTrigger = document.getElementById("questions-tab-trigger");
     const reportsTabTrigger = document.getElementById("reports-tab-trigger");
