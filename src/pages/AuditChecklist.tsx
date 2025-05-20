@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -165,6 +164,9 @@ export default function AuditChecklist() {
   const [showDomainSelector, setShowDomainSelector] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Record<string, boolean>>({});
   const [filteredDomains, setFilteredDomains] = useState<Domain[]>([]);
+  
+  // Reference for scrolling to top
+  const topRef = useRef<HTMLDivElement>(null);
 
   // Fetch audit data and questions from Supabase
   useEffect(() => {
@@ -383,6 +385,11 @@ export default function AuditChecklist() {
         setQuestions(domain.subdomains[currentSubdomainIndex].questions);
         // Clear missing answers highlight when changing domain/subdomain
         setMissingAnswers([]);
+        
+        // Scroll to top when domain or subdomain changes
+        if (topRef.current) {
+          topRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     }
   }, [currentDomain, currentSubdomainIndex, filteredDomains]);
@@ -401,7 +408,7 @@ export default function AuditChecklist() {
     // Remove from missing answers if it was there
     setMissingAnswers(prev => prev.filter(id => id !== questionId));
     
-    // Update questions state for UI
+    // Update questions state for UI immediately
     setQuestions(questions.map(q => 
       q.id === questionId 
         ? { ...q, answer: { maturity_level: maturityLevel, notes: newAnswers[questionId]?.notes || null }}
@@ -420,7 +427,33 @@ export default function AuditChecklist() {
       // Recalculate remaining domains
       calculateRemainingDomains(filteredDomains, newAnswers);
     }
+    
+    // Optionally save to database in background for immediate persistence
+    // This is commented out as it might cause performance issues with many rapid selections
+    // await saveAnswerToDatabase(questionId, maturityLevel, newAnswers[questionId]?.notes || null);
   };
+  
+  // Optional function to save individual answers without updating the whole batch
+  // const saveAnswerToDatabase = async (questionId: string, maturityLevel: number, notes: string | null) => {
+  //   if (!auditId) return;
+  //   
+  //   try {
+  //     const { error } = await supabase
+  //       .from("audit_answers")
+  //       .upsert({
+  //         audit_id: auditId,
+  //         question_id: questionId,
+  //         maturity_level: maturityLevel,
+  //         notes: notes
+  //       });
+  //     
+  //     if (error) {
+  //       console.error("Error saving individual answer:", error);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error in saveAnswerToDatabase:", error);
+  //   }
+  // };
 
   const handleNotesChange = (questionId: string, notes: string) => {
     // Update local state
@@ -513,6 +546,9 @@ export default function AuditChecklist() {
       return;
     }
     
+    // Save answers automatically when going to next subdomain
+    saveAnswers();
+    
     const currentDomainObj = filteredDomains.find(d => d.id === currentDomain);
     if (!currentDomainObj) return;
     
@@ -534,6 +570,8 @@ export default function AuditChecklist() {
         saveAnswers();
       }
     }
+    
+    // Scroll to top happens in the useEffect that watches currentDomain and currentSubdomainIndex
   };
 
   const goToPrevSubdomain = () => {
@@ -660,6 +698,9 @@ export default function AuditChecklist() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+      {/* Reference for scrolling to top */}
+      <div ref={topRef} />
+      
       <Button 
         variant="ghost" 
         onClick={() => navigate("/auditor-dashboard")}
