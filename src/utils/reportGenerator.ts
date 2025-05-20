@@ -84,6 +84,14 @@ interface Recommendation {
   impact: string;
 }
 
+// Define interface for auditor information
+interface AuditorInfo {
+  name?: string;
+  email?: string;
+  position?: string;
+  department?: string;
+}
+
 // Maturity level descriptions
 const maturityLevelDescriptions: Record<number, {name: string, description: string}> = {
   0: {
@@ -124,42 +132,32 @@ export const generateAuditReport = async (auditId: string) => {
     if (auditError) throw auditError;
     if (!auditData) throw new Error("Data audit tidak ditemukan");
 
-    // Fetch auditor information
+    // Prepare auditor information
     let auditorName = "Unknown";
     let auditorEmail = "Unknown";
     let auditorPosition = "Unknown";
     let auditorDepartment = "Unknown";
     
+    // Extract auditor info from the audit data
     if (auditData.user_id && auditData.user_id !== "superadmin-id") {
       try {
-        // Fetch auditor information based on user_id
-        const { data: userData, error: userError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", auditData.user_id)
-          .single();
-          
-        if (!userError && userData) {
-          auditorName = userData.full_name || "Unknown";
-          auditorEmail = userData.email || "Unknown";
-        }
-        
-        // Check if auditor_info exists in audit data
-        if (auditData.auditor_info) {
-          const auditorInfo = auditData.auditor_info;
-          auditorName = auditorInfo.name || auditorName;
-          auditorEmail = auditorInfo.email || auditorEmail;
+        // Check if auditor_info exists in audit data and is an object
+        if (auditData.auditor_info && typeof auditData.auditor_info === 'object') {
+          // Cast to our interface to access properties safely
+          const auditorInfo = auditData.auditor_info as AuditorInfo;
+          auditorName = auditorInfo.name || "Unknown";
+          auditorEmail = auditorInfo.email || "Unknown";
           auditorPosition = auditorInfo.position || "Unknown";
           auditorDepartment = auditorInfo.department || "Unknown";
         }
       } catch (error) {
-        console.error("Error fetching auditor data:", error);
+        console.error("Error processing auditor data:", error);
       }
-    } else if (auditData.auditor_info) {
-      // Get auditor info directly from audit data
-      const auditorInfo = auditData.auditor_info;
-      auditorName = auditorInfo.name || auditorName;
-      auditorEmail = auditorInfo.email || auditorEmail;
+    } else if (auditData.auditor_info && typeof auditData.auditor_info === 'object') {
+      // Get auditor info directly from audit data if it exists and is an object
+      const auditorInfo = auditData.auditor_info as AuditorInfo;
+      auditorName = auditorInfo.name || "Unknown";
+      auditorEmail = auditorInfo.email || "Unknown";
       auditorPosition = auditorInfo.position || "Unknown";
       auditorDepartment = auditorInfo.department || "Unknown";
     }
@@ -462,6 +460,7 @@ export const generateAuditReport = async (auditId: string) => {
 };
 
 const calculateDomainMaturityLevels = (results: AuditResult[]): DomainMaturityData[] => {
+  // ... keep existing code (domain maturity calculations)
   const domainMap: Record<string, { total: number, count: number }> = {};
 
   // Calculate average maturity level for each domain
@@ -486,6 +485,7 @@ const calculateDomainMaturityLevels = (results: AuditResult[]): DomainMaturityDa
 };
 
 const generateExecutiveSummary = (maturityData: DomainMaturityData[]): string => {
+  // ... keep existing code (executive summary generation)
   if (!maturityData.length) return "Tidak ada data kematangan yang tersedia untuk audit ini.";
   
   const avgMaturity = maturityData.reduce((sum, domain) => sum + domain.currentLevel, 0) / maturityData.length;
@@ -514,6 +514,7 @@ Laporan ini menyajikan hasil penilaian COBIT 2019 yang dilakukan untuk ${maturit
 };
 
 const generateRecommendations = (maturityData: DomainMaturityData[]): Recommendation[] => {
+  // ... keep existing code (recommendations generation)
   return maturityData.map((domain) => {
     const gap = domain.targetLevel - domain.currentLevel;
     let priority: 'Tinggi' | 'Sedang' | 'Rendah' = 'Rendah';
