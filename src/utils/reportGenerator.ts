@@ -84,18 +84,14 @@ interface Recommendation {
   impact: string;
 }
 
-// Enhanced interface for auditor information
+// Updated auditor information interface with only the requested fields
 interface AuditorInfo {
-  name?: string;
-  email?: string;
-  position?: string;
-  department?: string;
-  nik?: string;          // Added NIK (Employee ID)
-  phone?: string;        // Added phone number
-  organization?: string; // Added organization
-  designation?: string;  // Added designation/title
-  team?: string;         // Added team
-  division?: string;     // Added division
+  fullName?: string;     // Nama Lengkap
+  nik?: string;          // Nomor Induk Kependudukan (NIK)
+  phone?: string;        // Nomor Telepon
+  certification?: string; // Sertifikasi
+  organization?: string; // Perusahaan/Instansi
+  position?: string;     // Jabatan
 }
 
 // Maturity level descriptions
@@ -140,36 +136,27 @@ export const generateAuditReport = async (auditId: string) => {
 
     // Initialize auditor information with default values
     let auditorInfo: AuditorInfo = {
-      name: "Unknown",
-      email: "Unknown",
-      position: "Unknown",
-      department: "Unknown",
+      fullName: "Unknown",
       nik: "Unknown",
       phone: "Unknown",
+      certification: "Unknown",
       organization: auditData.organization || "Unknown",
-      designation: "Unknown",
-      team: "Unknown",
-      division: "Unknown"
+      position: "Unknown"
     };
     
     // Extract auditor info from the audit data
     if (auditData.auditor_info && typeof auditData.auditor_info === 'object') {
-      // Cast to our interface to access properties safely
-      const rawAuditorInfo = auditData.auditor_info as AuditorInfo;
+      const rawAuditorInfo = auditData.auditor_info as any;
       
       // Update with available values, keeping defaults for missing ones
       auditorInfo = {
         ...auditorInfo,
-        name: rawAuditorInfo.name || auditorInfo.name,
-        email: rawAuditorInfo.email || auditorInfo.email,
-        position: rawAuditorInfo.position || auditorInfo.position,
-        department: rawAuditorInfo.department || auditorInfo.department,
+        fullName: rawAuditorInfo.fullName || rawAuditorInfo.name || auditorInfo.fullName,
         nik: rawAuditorInfo.nik || auditorInfo.nik,
         phone: rawAuditorInfo.phone || auditorInfo.phone,
+        certification: rawAuditorInfo.certification || auditorInfo.certification,
         organization: rawAuditorInfo.organization || auditorInfo.organization,
-        designation: rawAuditorInfo.designation || auditorInfo.designation,
-        team: rawAuditorInfo.team || auditorInfo.team,
-        division: rawAuditorInfo.division || auditorInfo.division
+        position: rawAuditorInfo.position || auditorInfo.position
       };
     }
 
@@ -229,22 +216,19 @@ export const generateAuditReport = async (auditId: string) => {
     pdf.text(`Title / Judul: ${auditData.title}`, 20, 45);
     pdf.text(`Scope / Lingkup: ${auditData.scope || "Tidak ditentukan"}`, 20, 50);
 
-    // Add enhanced auditor information
+    // Add simplified auditor information with only the requested fields
     pdf.setFontSize(12);
     pdf.setTextColor(30, 30, 30);
     pdf.text("Auditor Information / Informasi Auditor", 20, 60);
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
     let yPos = 67;
-    pdf.text(`Name / Nama: ${auditorInfo.name}`, 25, yPos); yPos += 5;
-    pdf.text(`NIK / ID: ${auditorInfo.nik}`, 25, yPos); yPos += 5;
-    pdf.text(`Phone / Telepon: ${auditorInfo.phone}`, 25, yPos); yPos += 5;
-    pdf.text(`Email: ${auditorInfo.email}`, 25, yPos); yPos += 5;
-    pdf.text(`Position / Jabatan: ${auditorInfo.position}`, 25, yPos); yPos += 5;
-    pdf.text(`Department / Departemen: ${auditorInfo.department}`, 25, yPos); yPos += 5;
-    pdf.text(`Division / Divisi: ${auditorInfo.division}`, 25, yPos); yPos += 5;
-    pdf.text(`Team / Tim: ${auditorInfo.team}`, 25, yPos); yPos += 5;
-    pdf.text(`Designation / Penunjukan: ${auditorInfo.designation}`, 25, yPos); yPos += 5;
+    pdf.text(`Nama Lengkap / Full Name: ${auditorInfo.fullName}`, 25, yPos); yPos += 5;
+    pdf.text(`NIK / National ID: ${auditorInfo.nik}`, 25, yPos); yPos += 5;
+    pdf.text(`Nomor Telepon / Phone: ${auditorInfo.phone}`, 25, yPos); yPos += 5;
+    pdf.text(`Sertifikasi / Certification: ${auditorInfo.certification}`, 25, yPos); yPos += 5;
+    pdf.text(`Perusahaan/Instansi / Company/Organization: ${auditorInfo.organization}`, 25, yPos); yPos += 5;
+    pdf.text(`Jabatan / Position: ${auditorInfo.position}`, 25, yPos); yPos += 5;
 
     // Add Executive Summary - adjust y position to account for auditor info
     pdf.setFontSize(14);
