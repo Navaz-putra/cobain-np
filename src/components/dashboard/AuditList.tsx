@@ -7,6 +7,8 @@ import { Info, ChevronRight, Clock, ClipboardCheck, FileCheck, Trash2 } from "lu
 import { PDFReport } from "@/components/PDFReport";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { logUserActivity } from '@/lib/activity-logger';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,7 +149,6 @@ interface AuditListProps {
 export const AuditList: React.FC<AuditListProps> = ({ audits, loading, setAudits }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { logUserActivity } = require('./RecentActivities');
 
   const handleDeleteAudit = async (auditId: string) => {
     try {

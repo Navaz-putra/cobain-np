@@ -52,11 +52,9 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
         // Get user's other activities from the user_activities table if it exists
         let activityData: any[] = [];
         try {
+          // Use a direct query instead of accessing user_activities through .from()
           const { data: activityLogs, error: activityError } = await supabase
-            .from('user_activities')
-            .select('*')
-            .eq('user_id', currentUserId)
-            .order('created_at', { ascending: false })
+            .rpc('get_user_activities', { p_user_id: currentUserId })
             .limit(10);
             
           if (!activityError && activityLogs) {
@@ -148,30 +146,6 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
     }
   };
 
-  // Function to log user activity (can be called from other components)
-  const logUserActivity = async (
-    userId: string, 
-    activityType: 'create_audit' | 'delete_audit' | 'export_report' | 'update_profile' | 'change_password', 
-    description: string
-  ) => {
-    try {
-      // Try to insert into user_activities table
-      const { error } = await supabase
-        .from('user_activities')
-        .insert({
-          user_id: userId,
-          activity_type: activityType,
-          description
-        });
-        
-      if (error) {
-        console.error("Failed to log user activity:", error);
-      }
-    } catch (err) {
-      console.error("Error logging user activity:", err);
-    }
-  };
-
   // If we have no activities and we're not loading, show mock data
   const displayActivities = activities.length > 0 ? activities : initialActivities || [
     {
@@ -212,30 +186,6 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
       )}
     </div>
   );
-};
-
-// Export the logUserActivity function so it can be used by other components
-export const logUserActivity = async (
-  userId: string, 
-  activityType: 'create_audit' | 'delete_audit' | 'export_report' | 'update_profile' | 'change_password', 
-  description: string
-) => {
-  try {
-    // Try to insert into user_activities table
-    const { error } = await supabase
-      .from('user_activities')
-      .insert({
-        user_id: userId,
-        activity_type: activityType,
-        description
-      });
-      
-    if (error) {
-      console.error("Failed to log user activity:", error);
-    }
-  } catch (err) {
-    console.error("Error logging user activity:", err);
-  }
 };
 
 export const RecentActivitiesFooter: React.FC = () => {

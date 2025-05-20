@@ -5,7 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { generateAuditReport } from '@/utils/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from "@/contexts/AuthContext";
-import { logUserActivity } from '@/components/dashboard/RecentActivities';
+import { logUserActivity } from '@/lib/activity-logger';
 
 interface PDFReportProps {
   auditId: string;
