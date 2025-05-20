@@ -167,7 +167,10 @@ export default function AuditChecklist() {
   
   // Reference for scrolling to top
   const topRef = useRef<HTMLDivElement>(null);
-
+  
+  // References for question elements to enable scrolling
+  const questionRefs = useRef<{ [key: string]: React.RefObject<HTMLDivElement> }>({});
+  
   // Fetch audit data and questions from Supabase
   useEffect(() => {
     const fetchAudit = async () => {
@@ -382,7 +385,16 @@ export default function AuditChecklist() {
     if (filteredDomains.length > 0 && currentDomain) {
       const domain = filteredDomains.find(d => d.id === currentDomain);
       if (domain && domain.subdomains.length > 0 && domain.subdomains[currentSubdomainIndex]) {
-        setQuestions(domain.subdomains[currentSubdomainIndex].questions);
+        const newQuestions = domain.subdomains[currentSubdomainIndex].questions;
+        setQuestions(newQuestions);
+        
+        // Initialize refs for each question
+        newQuestions.forEach(q => {
+          if (!questionRefs.current[q.id]) {
+            questionRefs.current[q.id] = React.createRef();
+          }
+        });
+        
         // Clear missing answers highlight when changing domain/subdomain
         setMissingAnswers([]);
         
@@ -394,7 +406,7 @@ export default function AuditChecklist() {
     }
   }, [currentDomain, currentSubdomainIndex, filteredDomains]);
 
-  const handleMaturityLevelChange = async (questionId: string, value: string) => {
+  const handleMaturityLevelChange = async (questionId: string, value: string, index: number) => {
     const maturityLevel = parseInt(value);
     
     // Update local state
@@ -427,6 +439,23 @@ export default function AuditChecklist() {
       // Recalculate remaining domains
       calculateRemainingDomains(filteredDomains, newAnswers);
     }
+    
+    // Scroll to the next question after a short delay
+    setTimeout(() => {
+      // Find the next question reference
+      const nextQuestionIndex = index + 1;
+      if (nextQuestionIndex < questions.length) {
+        const nextQuestionId = questions[nextQuestionIndex].id;
+        const nextQuestionRef = questionRefs.current[nextQuestionId];
+        
+        if (nextQuestionRef && nextQuestionRef.current) {
+          nextQuestionRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+      }
+    }, 300); // Small delay to ensure the UI updates first
     
     // Optionally save to database in background for immediate persistence
     // This is commented out as it might cause performance issues with many rapid selections
@@ -851,9 +880,10 @@ export default function AuditChecklist() {
               </div>
 
               <div className="space-y-8">
-                {currentSubdomain.questions.map((question) => (
+                {currentSubdomain.questions.map((question, questionIndex) => (
                   <div 
                     key={question.id} 
+                    ref={questionRefs.current[question.id] || (questionRefs.current[question.id] = React.createRef())}
                     className={`bg-white border p-6 rounded-lg shadow-sm ${missingAnswers.includes(question.id) ? 'border-red-500' : 'border-gray-200'}`}
                   >
                     <div>
@@ -874,7 +904,7 @@ export default function AuditChecklist() {
                             <ToggleGroup 
                               type="single" 
                               value={String(question.answer?.maturity_level ?? "")}
-                              onValueChange={(value) => value && handleMaturityLevelChange(question.id, value)}
+                              onValueChange={(value) => value && handleMaturityLevelChange(question.id, value, questionIndex)}
                               className="flex flex-wrap"
                             >
                               {maturityLevels.map((level) => (
@@ -897,10 +927,12 @@ export default function AuditChecklist() {
                             )}
                             
                             {question.answer?.maturity_level !== undefined && (
-                              <p className="text-sm px-3 py-2 bg-gray-50 rounded border border-gray-100">
-                                <span className="font-medium">{maturityLevels.find(l => l.value === question.answer?.maturity_level)?.label}:</span>{" "}
-                                {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
-                              </p>
+                              <div className="mt-3 transition-all duration-300 animate-fade-in">
+                                <div className={`text-sm px-4 py-3 rounded-md border ${getMaturityBadgeColor(question.answer.maturity_level)}`}>
+                                  <span className="font-medium">Level {question.answer.maturity_level} dipilih:</span>{" "}
+                                  {maturityLevels.find(l => l.value === question.answer?.maturity_level)?.description}
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
