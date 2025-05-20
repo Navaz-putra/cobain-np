@@ -71,9 +71,28 @@ export default function AdminDashboard() {
       try {
         setLoadingUsers(true);
         
-        // Special case for superadmin user - if it's the hardcoded superadmin
+        // Special case for superadmin user
         if (user?.email === hardcodedSuperadminEmail) {
+          console.log("Fetching users as superadmin");
+          
           try {
+            // Direct database query for superadmin without going through edge function
+            const { data: userData, error: userError } = await supabase
+              .from('auth.users') // This will likely fail due to RLS, but we try direct DB first
+              .select('*');
+              
+            if (!userError && userData) {
+              setUsers(userData);
+              setLoadingUsers(false);
+              return;
+            }
+          } catch (directDbError) {
+            console.log("Direct DB query failed, trying edge function:", directDbError);
+            // Fall back to edge function if direct query fails
+          }
+          
+          try {
+            // Call the edge function with superadmin credentials
             const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
               method: "POST",
               headers: {
@@ -87,31 +106,60 @@ export default function AdminDashboard() {
             });
             
             if (!response.ok) {
+              console.error('Edge function error status:', response.status);
+              const errorText = await response.text();
+              console.error('Edge function error response:', errorText);
               throw new Error(`HTTP error! Status: ${response.status}`);
             }
             
             const result = await response.json();
+            console.log("Edge function response:", result);
             
             if (result.data?.users) {
-              setUsers(result.data.users || []);
+              setUsers(result.data.users);
+            } else if (result.users) {
+              // Handle alternative response format
+              setUsers(result.users);
             } else {
-              throw new Error(result.error || "Failed to fetch users");
+              throw new Error(result.error || "Failed to fetch users - no users data in response");
             }
           } catch (error) {
-            console.error('Error fetching users:', error);
-            throw error;
+            console.error('Error fetching users via edge function:', error);
+            toast({
+              title: 'Error',
+              description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
+              variant: 'destructive'
+            });
+            setUsers([]); // Set empty array to prevent null reference errors
           }
           
           setLoadingUsers(false);
           return;
         }
 
+        // For regular admin users
         if (!session?.access_token) {
           setTokenError("No access token available for admin operations");
           setUsers([]);
+          setLoadingUsers(false);
           return;
         }
 
+        // Try direct database query first if possible
+        try {
+          const { data: directData, error: directError } = await supabase.auth.admin.listUsers();
+          
+          if (!directError && directData?.users) {
+            setUsers(directData.users);
+            setLoadingUsers(false);
+            return;
+          }
+        } catch (directQueryError) {
+          console.log("Direct admin query failed, using edge function instead:", directQueryError);
+        }
+
+        // Fall back to edge function
+        console.log("Using edge function with access token");
         const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -124,15 +172,21 @@ export default function AdminDashboard() {
         });
         
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Edge function error response:', errorText);
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         
         const result = await response.json();
+        console.log("Edge function response:", result);
         
         if (result.data?.users) {
-          setUsers(result.data.users || []);
+          setUsers(result.data.users);
+        } else if (result.users) {
+          // Handle alternative response format
+          setUsers(result.users);
         } else {
-          throw new Error(result.error || "Failed to fetch users");
+          throw new Error(result.error || "Failed to fetch users - no users data in response");
         }
       } catch (error) {
         console.error('Error fetching users:', error);

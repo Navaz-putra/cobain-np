@@ -13,6 +13,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Admin operation request received");
+    
     // Create a Supabase client with the Auth Admin API key
     const supabaseAdmin = createClient(
       supabaseUrl,
@@ -29,6 +31,8 @@ serve(async (req) => {
     const requestData = await req.json();
     const { action, userData, userId } = requestData;
     
+    console.log("Requested action:", action);
+    
     // Special handling for superadmin
     const isSuperAdmin = requestData.superadmin === true;
     const superadminEmail = requestData.superadminEmail || '';
@@ -39,6 +43,7 @@ serve(async (req) => {
     
     // Get the authorization header from the request (if available)
     const authHeader = req.headers.get('Authorization');
+    console.log("Auth header present:", !!authHeader);
     
     // Verify superadmin first if that's the claim
     if (isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
@@ -47,19 +52,51 @@ serve(async (req) => {
     }
     // If there's an auth header, verify the user
     else if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-      
-      if (!userError && userData?.user) {
-        user = userData.user;
-        // Check if user is an admin
-        isAdmin = user.email === hardcodedSuperadminEmail || 
-                 user.user_metadata?.role === 'admin';
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        console.log("Token length:", token.length);
+        
+        const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+        
+        if (userError) {
+          console.error("Error verifying user with token:", userError);
+          return new Response(
+            JSON.stringify({ error: 'Authentication error: ' + userError.message }),
+            {
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+        
+        if (userData?.user) {
+          user = userData.user;
+          console.log("Authenticated user:", user.email);
+          // Check if user is an admin
+          isAdmin = user.email === hardcodedSuperadminEmail || 
+                   user.user_metadata?.role === 'admin';
+                   
+          console.log("Is admin:", isAdmin);
+        } else {
+          console.log("No user data returned from getUser call");
+        }
+      } catch (tokenError) {
+        console.error("Error processing token:", tokenError);
+        return new Response(
+          JSON.stringify({ error: 'Token processing error' }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
+    } else {
+      console.log("No authentication provided");
     }
     
     // Allow operations only for verified admins
     if (!isAdmin) {
+      console.log("Unauthorized - Admin access required");
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Admin access required' }),
         {
@@ -69,7 +106,7 @@ serve(async (req) => {
       )
     }
 
-    let data, error;
+    let data = null, error = null;
 
     // Perform the requested admin action
     switch (action) {
@@ -192,11 +229,23 @@ serve(async (req) => {
 
       case 'listUsers':
         console.log("Listing users, isAdmin:", isAdmin);
-        const listResponse = await supabaseAdmin.auth.admin.listUsers();
-        if (listResponse.error) {
-          error = listResponse.error;
-        } else {
-          data = { users: listResponse.data.users || [] };
+        try {
+          const listResponse = await supabaseAdmin.auth.admin.listUsers();
+          console.log("List users response:", listResponse);
+          
+          if (listResponse.error) {
+            error = listResponse.error;
+            console.error("Error listing users:", error);
+          } else {
+            // Always return users in a consistent format
+            data = { 
+              users: listResponse.data.users || [] 
+            };
+            console.log(`Found ${data.users.length} users`);
+          }
+        } catch (listError) {
+          console.error("Exception when listing users:", listError);
+          error = { message: listError.toString() };
         }
         break;
         
@@ -211,12 +260,18 @@ serve(async (req) => {
             }
           )
         }
-        const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
         
-        if (userResponse.error) {
-          error = userResponse.error;
-        } else {
-          data = { user: userResponse.data.user };
+        try {
+          const userResponse = await supabaseAdmin.auth.admin.getUserById(userId);
+          
+          if (userResponse.error) {
+            error = userResponse.error;
+          } else {
+            data = { user: userResponse.data.user };
+          }
+        } catch (getUserError) {
+          console.error("Exception when getting user info:", getUserError);
+          error = { message: getUserError.toString() };
         }
         break;
 
@@ -241,6 +296,7 @@ serve(async (req) => {
       )
     }
 
+    console.log("Admin operation completed successfully");
     return new Response(
       JSON.stringify({ data }),
       {

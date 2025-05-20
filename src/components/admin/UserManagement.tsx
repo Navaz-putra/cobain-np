@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -30,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Users, Plus, Trash, Edit, Search, 
-  CheckCircle, CircleX 
+  CheckCircle, CircleX, Loader2
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +47,7 @@ export const UserManagement = ({ hardcodedSuperadminEmail }: UserManagementProps
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // New user form state
   const [newUser, setNewUser] = useState({
@@ -65,14 +65,17 @@ export const UserManagement = ({ hardcodedSuperadminEmail }: UserManagementProps
     role: "auditor",
   });
 
-  // Fetch users from database
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoadingUsers(true);
+  // Refresh users function
+  const refreshUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      setApiError(null);
+      
+      // Special case for superadmin user - if it's the hardcoded superadmin
+      if (user?.email === hardcodedSuperadminEmail) {
+        console.log("Fetching users as superadmin");
         
-        // Special case for superadmin user - if it's the hardcoded superadmin
-        if (user?.email === hardcodedSuperadminEmail) {
+        try {
           const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
             method: "POST",
             headers: {
@@ -85,62 +88,89 @@ export const UserManagement = ({ hardcodedSuperadminEmail }: UserManagementProps
             })
           });
           
-          const result = await response.json();
-          
-          if (response.ok) {
-            setUsers(result.data?.users || []);
-          } else {
-            throw new Error(result.error || "Failed to fetch users");
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`HTTP error! Status: ${response.status}`, errorText);
+            throw new Error(`Kesalahan server: ${response.status}`);
           }
           
-          setLoadingUsers(false);
-          return;
-        }
-
-        if (!session?.access_token) {
-          toast({
-            title: "Error",
-            description: "No access token available for admin operations",
-            variant: 'destructive'
-          });
+          const result = await response.json();
+          console.log("User data received:", result);
+          
+          if (result.data?.users) {
+            setUsers(result.data.users);
+          } else if (result.users) {
+            // Alternative format
+            setUsers(result.users);
+          } else {
+            throw new Error("Format data tidak valid");
+          }
+        } catch (error) {
+          console.error('Error fetching users:', error);
+          setApiError(error instanceof Error ? error.message : 'Kesalahan tidak diketahui');
           setUsers([]);
-          return;
         }
-
-        const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify({
-            action: "listUsers"
-          })
-        });
         
-        const result = await response.json();
-        
-        if (response.ok) {
-          setUsers(result.data?.users || []);
-        } else {
-          throw new Error(result.error || "Failed to fetch users");
-        }
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        toast({
-          title: 'Error',
-          description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
-          variant: 'destructive'
-        });
-      } finally {
         setLoadingUsers(false);
+        return;
       }
-    };
 
-    if (user && (user.role === "admin" || user.email === hardcodedSuperadminEmail)) {
-      fetchUsers();
+      if (!session?.access_token) {
+        setApiError("Token akses tidak tersedia untuk operasi admin");
+        setUsers([]);
+        setLoadingUsers(false);
+        return;
+      }
+
+      console.log("Fetching users with access token");
+      const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          action: "listUsers"
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`HTTP error! Status: ${response.status}`, errorText);
+        throw new Error(`Kesalahan server: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log("User data received:", result);
+      
+      if (result.data?.users) {
+        setUsers(result.data.users);
+      } else if (result.users) {
+        // Alternative format
+        setUsers(result.users);
+      } else {
+        throw new Error("Format data tidak valid");
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setApiError(error instanceof Error ? error.message : 'Kesalahan tidak diketahui');
+      toast({
+        title: 'Error',
+        description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
+        variant: 'destructive'
+      });
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
     }
-  }, [toast, session?.access_token, user, hardcodedSuperadminEmail]);
+  };
+
+  // Fetch users from database
+  useEffect(() => {
+    if (user && (user.role === "admin" || user.email === hardcodedSuperadminEmail)) {
+      refreshUsers();
+    }
+  }, [session?.access_token, user, hardcodedSuperadminEmail]);
 
   // Filter users based on search
   const filteredUsers = users.filter(user => 
@@ -552,83 +582,100 @@ export const UserManagement = ({ hardcodedSuperadminEmail }: UserManagementProps
               onChange={(e) => setSearchUser(e.target.value)}
             />
           </div>
-          <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Tambah Pengguna
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Tambah Pengguna Baru</DialogTitle>
-                <DialogDescription>
-                  Buat akun pengguna baru pada platform COBAIN.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nama
-                  </Label>
-                  <Input
-                    id="name"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    className="col-span-3"
-                  />
+          <div className="flex items-center gap-2">
+            <Button onClick={refreshUsers} variant="outline" size="icon" title="Refresh data">
+              {loadingUsers ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+              )}
+            </Button>
+            <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah Pengguna
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+                  <DialogDescription>
+                    Buat akun pengguna baru pada platform COBAIN.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Nama
+                    </Label>
+                    <Input
+                      id="name"
+                      value={newUser.name}
+                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="role" className="text-right">
+                      Peran
+                    </Label>
+                    <Select
+                      value={newUser.role}
+                      onValueChange={(value) => setNewUser({ ...newUser, role: value })}
+                    >
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Pilih peran" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="auditor">Auditor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="password" className="text-right">
+                      Kata Sandi
+                    </Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="col-span-3"
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="role" className="text-right">
-                    Peran
-                  </Label>
-                  <Select
-                    value={newUser.role}
-                    onValueChange={(value) => setNewUser({ ...newUser, role: value })}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Pilih peran" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="auditor">Auditor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="password" className="text-right">
-                    Kata Sandi
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleAddUser}>Tambah Pengguna</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <Button onClick={handleAddUser}>Tambah Pengguna</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+        
+        {apiError && (
+          <div className="bg-destructive/10 border border-destructive text-destructive p-3 rounded-md mb-4">
+            <p className="text-sm font-medium">Kesalahan mengambil data: {apiError}</p>
+            <p className="text-xs mt-1">Silakan coba refresh halaman atau logout dan login kembali</p>
+          </div>
+        )}
         
         {loadingUsers ? (
           <div className="text-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
             <p>Memuat data pengguna...</p>
           </div>
         ) : (
@@ -648,9 +695,9 @@ export const UserManagement = ({ hardcodedSuperadminEmail }: UserManagementProps
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.id.substring(0, 8)}...</TableCell>
+                      <TableCell className="font-medium">{user.id && typeof user.id === 'string' ? user.id.substring(0, 8) + '...' : 'N/A'}</TableCell>
                       <TableCell>{user.user_metadata?.name || "-"}</TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.email || 'No email'}</TableCell>
                       <TableCell className="capitalize">{user.user_metadata?.role || "auditor"}</TableCell>
                       <TableCell>
                         <div className="flex items-center">
@@ -689,7 +736,9 @@ export const UserManagement = ({ hardcodedSuperadminEmail }: UserManagementProps
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center">Tidak ada data pengguna yang sesuai.</TableCell>
+                    <TableCell colSpan={6} className="text-center">
+                      {apiError ? 'Terjadi kesalahan saat memuat data' : 'Tidak ada data pengguna yang sesuai.'}
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
