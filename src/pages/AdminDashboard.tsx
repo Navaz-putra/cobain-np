@@ -75,22 +75,8 @@ export default function AdminDashboard() {
         if (user?.email === hardcodedSuperadminEmail) {
           console.log("Fetching users as superadmin");
           
-          try {
-            // Direct database query for superadmin without going through edge function
-            const { data: userData, error: userError } = await supabase
-              .from('auth.users') // This will likely fail due to RLS, but we try direct DB first
-              .select('*');
-              
-            if (!userError && userData) {
-              setUsers(userData);
-              setLoadingUsers(false);
-              return;
-            }
-          } catch (directDbError) {
-            console.log("Direct DB query failed, trying edge function:", directDbError);
-            // Fall back to edge function if direct query fails
-          }
-          
+          // Do not try to directly query auth.users as it's not accessible via the client
+          // Instead, always use the edge function for user data
           try {
             // Call the edge function with superadmin credentials
             const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
@@ -145,20 +131,7 @@ export default function AdminDashboard() {
           return;
         }
 
-        // Try direct database query first if possible
-        try {
-          const { data: directData, error: directError } = await supabase.auth.admin.listUsers();
-          
-          if (!directError && directData?.users) {
-            setUsers(directData.users);
-            setLoadingUsers(false);
-            return;
-          }
-        } catch (directQueryError) {
-          console.log("Direct admin query failed, using edge function instead:", directQueryError);
-        }
-
-        // Fall back to edge function
+        // Use edge function for all admin operations
         console.log("Using edge function with access token");
         const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
