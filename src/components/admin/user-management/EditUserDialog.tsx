@@ -44,9 +44,12 @@ export const EditUserDialog = ({
 }: EditUserDialogProps) => {
   const { user, session } = useAuth();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleEditUser = async () => {
     try {
+      setIsSubmitting(true);
+      
       if (!editUser.id || !editUser.email) {
         toast({
           title: "Error",
@@ -75,12 +78,13 @@ export const EditUserDialog = ({
           })
         });
         
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Error: ${response.status}`);
+        }
+        
         const result = await response.json();
         
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to update user");
-        }
-
         toast({
           title: "Pengguna Diperbarui",
           description: `${editUser.name} telah diperbarui`
@@ -117,12 +121,13 @@ export const EditUserDialog = ({
         })
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error: ${response.status}`);
+      }
+      
       const result = await response.json();
       
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update user");
-      }
-
       toast({
         title: "Pengguna Diperbarui",
         description: `${editUser.name} telah diperbarui`
@@ -137,6 +142,8 @@ export const EditUserDialog = ({
         description: `Gagal memperbarui pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
         variant: 'destructive'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -192,7 +199,9 @@ export const EditUserDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleEditUser}>Simpan Perubahan</Button>
+          <Button onClick={handleEditUser} disabled={isSubmitting}>
+            {isSubmitting ? "Memproses..." : "Simpan Perubahan"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -53,7 +53,7 @@ serve(async (req) => {
       console.log("Superadmin access granted based on email");
     }
     // If there's an auth header, verify the user
-    else if (authHeader) {
+    else if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         const token = authHeader.replace('Bearer ', '');
         console.log("Token length:", token.length);
@@ -85,25 +85,32 @@ serve(async (req) => {
       } catch (tokenError) {
         console.error("Error processing token:", tokenError);
         return new Response(
-          JSON.stringify({ error: 'Token processing error' }),
+          JSON.stringify({ error: 'Token processing error: ' + tokenError.message }),
           {
             status: 401,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         );
       }
-    } else if (isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
-      // Secondary check for superadmin without auth header - added for reliability
+    } else if (!authHeader && isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
+      // Secondary check for superadmin without auth header
       isAdmin = true;
       console.log("Superadmin access granted without auth header");
     } else {
       console.log("No authentication provided");
-    }
-    
-    // Special case for specific actions that need access even without regular auth
-    if (action === 'listUsers' && isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
-      console.log("Allowing listUsers for hardcoded superadmin");
-      isAdmin = true;
+      // If the action is listUsers and it's a superadmin request, special handling
+      if (action === 'listUsers' && isSuperAdmin && superadminEmail === hardcodedSuperadminEmail) {
+        isAdmin = true;
+        console.log("Special case: allowing listUsers for hardcoded superadmin without auth");
+      } else {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     }
     
     // Allow operations only for verified admins

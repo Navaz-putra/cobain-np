@@ -48,6 +48,7 @@ export const useUserManagement = (hardcodedSuperadminEmail: string) => {
         console.log("Fetching users as superadmin");
         
         try {
+          // Call the edge function with superadmin credentials
           const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
             method: "POST",
             headers: {
@@ -154,12 +155,14 @@ export const useUserManagement = (hardcodedSuperadminEmail: string) => {
           })
         });
         
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`HTTP error! Status: ${response.status}`, errorText);
+          throw new Error(`Kesalahan server: ${response.status}`);
+        }
+        
         const result = await response.json();
         
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to delete user");
-        }
-
         toast({
           title: "Pengguna Dihapus",
           description: "Pengguna berhasil dihapus"
@@ -190,12 +193,14 @@ export const useUserManagement = (hardcodedSuperadminEmail: string) => {
         })
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`HTTP error! Status: ${response.status}`, errorText);
+        throw new Error(`Kesalahan server: ${response.status}`);
+      }
+      
       const result = await response.json();
       
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to delete user");
-      }
-
       toast({
         title: "Pengguna Dihapus",
         description: "Pengguna berhasil dihapus"

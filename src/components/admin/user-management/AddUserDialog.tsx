@@ -36,9 +36,12 @@ export const AddUserDialog = ({
     role: "auditor",
     password: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddUser = async () => {
     try {
+      setIsSubmitting(true);
+      
       if (!newUser.email || !newUser.password) {
         toast({
           title: "Error",
@@ -68,12 +71,13 @@ export const AddUserDialog = ({
           })
         });
         
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Error: ${response.status}`);
+        }
+        
         const result = await response.json();
         
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to create user");
-        }
-
         toast({
           title: "Pengguna Ditambahkan",
           description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
@@ -118,12 +122,13 @@ export const AddUserDialog = ({
         })
       });
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Error: ${response.status}`);
+      }
+      
       const result = await response.json();
       
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create user");
-      }
-
       toast({
         title: "Pengguna Ditambahkan",
         description: `${newUser.name} telah ditambahkan sebagai ${newUser.role === 'admin' ? 'admin' : 'auditor'}`
@@ -145,6 +150,8 @@ export const AddUserDialog = ({
         description: `Gagal menambahkan pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
         variant: 'destructive'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -212,7 +219,9 @@ export const AddUserDialog = ({
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleAddUser}>Tambah Pengguna</Button>
+          <Button onClick={handleAddUser} disabled={isSubmitting}>
+            {isSubmitting ? "Memproses..." : "Tambah Pengguna"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
