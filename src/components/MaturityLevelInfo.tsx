@@ -23,7 +23,7 @@ export function MaturityLevelInfo() {
               <div className="bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">0</span>
               </div>
-              <span>Incomplete Process</span>
+              <span>Proses Tidak Lengkap (Incomplete Process)</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-sm pb-4 pl-8">
@@ -37,7 +37,7 @@ export function MaturityLevelInfo() {
               <div className="bg-orange-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">1</span>
               </div>
-              <span>Performed Process</span>
+              <span>Proses Dilaksanakan (Performed Process)</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-sm pb-4 pl-8">
@@ -51,7 +51,7 @@ export function MaturityLevelInfo() {
               <div className="bg-yellow-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">2</span>
               </div>
-              <span>Managed Process</span>
+              <span>Proses Terkelola (Managed Process)</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-sm pb-4 pl-8">
@@ -65,7 +65,7 @@ export function MaturityLevelInfo() {
               <div className="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">3</span>
               </div>
-              <span>Established Process</span>
+              <span>Proses Mapan (Established Process)</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-sm pb-4 pl-8">
@@ -79,7 +79,7 @@ export function MaturityLevelInfo() {
               <div className="bg-indigo-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">4</span>
               </div>
-              <span>Predictable Process</span>
+              <span>Proses Terprediksi (Predictable Process)</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-sm pb-4 pl-8">
@@ -93,7 +93,7 @@ export function MaturityLevelInfo() {
               <div className="bg-green-500 text-white w-6 h-6 rounded-full flex items-center justify-center mr-2">
                 <span className="text-xs font-bold">5</span>
               </div>
-              <span>Optimizing Process</span>
+              <span>Proses Optimasi (Optimizing Process)</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-sm pb-4 pl-8">

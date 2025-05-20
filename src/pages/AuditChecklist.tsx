@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -35,14 +36,14 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 
-// Define maturity level descriptions
+// Define maturity level descriptions in Indonesian
 const maturityLevels = [
-  { value: 0, label: "0 - Incomplete", description: "Process is not implemented or fails to achieve its purpose" },
-  { value: 1, label: "1 - Performed", description: "Process is implemented and achieves its purpose" },
-  { value: 2, label: "2 - Managed", description: "Process is planned, monitored and adjusted" },
-  { value: 3, label: "3 - Established", description: "Process is well defined and follows standards" },
-  { value: 4, label: "4 - Predictable", description: "Process is measured and controlled" },
-  { value: 5, label: "5 - Optimizing", description: "Process is continuously improved" }
+  { value: 0, label: "0 - Incomplete", description: "Proses tidak diimplementasikan atau gagal mencapai tujuannya" },
+  { value: 1, label: "1 - Performed", description: "Proses diimplementasikan dan mencapai tujuannya" },
+  { value: 2, label: "2 - Managed", description: "Proses direncanakan, dipantau dan disesuaikan" },
+  { value: 3, label: "3 - Established", description: "Proses didefinisikan dengan baik dan mengikuti standar" },
+  { value: 4, label: "4 - Predictable", description: "Proses diukur dan dikendalikan" },
+  { value: 5, label: "5 - Optimizing", description: "Proses ditingkatkan secara berkelanjutan" }
 ];
 
 // Define types for our data
