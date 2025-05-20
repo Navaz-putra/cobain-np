@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -9,12 +10,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, FileText, Plus, LogOut, FileOutput } from "lucide-react";
+import { Users, FileText, Plus, LogOut } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserManagement } from "./UserManagement";
 import { QuestionManagement } from "./QuestionManagement";
-import { ReportManagement } from "./ReportManagement";
 
 // Domain and subdomain structure (used in overview stats)
 const domainStructure = [
@@ -120,10 +120,6 @@ export const DashboardOverview = ({ userCount, questionCount, auditCount }: {
             <Plus className="mr-2 h-4 w-4" />
             Tambah Pertanyaan Baru
           </Button>
-          <Button className="w-full justify-start" variant="outline" id="reports-tab-trigger">
-            <FileText className="mr-2 h-4 w-4" />
-            Lihat Laporan Audit
-          </Button>
         </CardContent>
       </Card>
 
@@ -136,7 +132,7 @@ export const DashboardOverview = ({ userCount, questionCount, auditCount }: {
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Sebagai administrator, Anda dapat mengelola pengguna, pertanyaan audit, dan melihat laporan.
+              Sebagai administrator, Anda dapat mengelola pengguna dan pertanyaan audit.
               Gunakan tab di bawah ini untuk menavigasi melalui berbagai bagian manajemen.
             </p>
             <div className="flex justify-center">
@@ -205,7 +201,6 @@ export const AdminDashboardComponents = ({
   useEffect(() => {
     const usersTabTrigger = document.getElementById("users-tab-trigger");
     const questionsTabTrigger = document.getElementById("questions-tab-trigger");
-    const reportsTabTrigger = document.getElementById("reports-tab-trigger");
 
     if (usersTabTrigger) {
       usersTabTrigger.addEventListener("click", () => {
@@ -221,17 +216,9 @@ export const AdminDashboardComponents = ({
       });
     }
 
-    if (reportsTabTrigger) {
-      reportsTabTrigger.addEventListener("click", () => {
-        const tabButton = document.querySelector('[data-state="inactive"][value="reports"]') as HTMLElement;
-        if (tabButton) tabButton.click();
-      });
-    }
-
     return () => {
       if (usersTabTrigger) usersTabTrigger.removeEventListener("click", () => {});
       if (questionsTabTrigger) questionsTabTrigger.removeEventListener("click", () => {});
-      if (reportsTabTrigger) reportsTabTrigger.removeEventListener("click", () => {});
     };
   }, []);
 
@@ -257,10 +244,6 @@ export const AdminDashboardComponents = ({
             <FileText className="mr-2 h-4 w-4" />
             Pertanyaan Audit
           </TabsTrigger>
-          <TabsTrigger id="reports-tab" value="reports">
-            <FileOutput className="mr-2 h-4 w-4" />
-            Laporan Audit
-          </TabsTrigger>
         </TabsList>
         
         {/* Users Tab */}
@@ -271,11 +254,6 @@ export const AdminDashboardComponents = ({
         {/* Questions Tab */}
         <TabsContent value="questions">
           <QuestionManagement />
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports">
-          <ReportManagement hardcodedSuperadminEmail={hardcodedSuperadminEmail} />
         </TabsContent>
       </Tabs>
     </>
