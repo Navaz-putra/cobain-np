@@ -8,12 +8,14 @@ export const logUserActivity = async (
   description: string
 ) => {
   try {
-    // Using raw insert to avoid TypeScript errors until Supabase types are regenerated
-    const { error } = await supabase.rpc('insert_user_activity', {
-      p_user_id: userId,
-      p_activity_type: activityType,
-      p_description: description
-    });
+    // Direct insert to user_activities table
+    const { error } = await supabase
+      .from('user_activities')
+      .insert({
+        user_id: userId,
+        activity_type: activityType,
+        description: description
+      });
         
     if (error) {
       console.error("Failed to log user activity:", error);

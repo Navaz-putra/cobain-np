@@ -49,20 +49,22 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
 
         if (error) throw error;
 
-        // Get user's other activities from the user_activities table if it exists
+        // Get user's other activities from the user_activities table
         let activityData: any[] = [];
         try {
-          // Use a direct query instead of accessing user_activities through .from()
+          // Direct query to fetch user activities
           const { data: activityLogs, error: activityError } = await supabase
-            .rpc('get_user_activities', { p_user_id: currentUserId })
+            .from('user_activities')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .order('created_at', { ascending: false })
             .limit(10);
             
           if (!activityError && activityLogs) {
             activityData = activityLogs;
           }
         } catch (activityFetchError) {
-          // If the table doesn't exist yet or other errors, just continue with audit data
-          console.log("Note: user_activities table may not exist yet or other error:", activityFetchError);
+          console.error("Error fetching user activities:", activityFetchError);
         }
 
         // Convert the audit data to activity items
@@ -120,8 +122,10 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
         // Combine all activities and sort by date (most recent first)
         const combinedActivities = [...auditActivities, ...otherActivities]
           .sort((a, b) => {
-            // This simple sort assumes the date strings are comparable
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
+            // Simple sort by date
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB.getTime() - dateA.getTime();
           })
           .slice(0, 10); // Limit to 10 most recent activities
           
