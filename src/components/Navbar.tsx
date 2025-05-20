@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -44,10 +43,7 @@ export function Navbar() {
                 <Link to={user?.role === "admin" ? "/admin-dashboard" : "/auditor-dashboard"}>
                   <Button variant="ghost">{t("nav.dashboard")}</Button>
                 </Link>
-                <Button variant="ghost" onClick={logout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {t("nav.logout")}
-                </Button>
+                
               </> : <>
                 <Link to="/login">
                   
