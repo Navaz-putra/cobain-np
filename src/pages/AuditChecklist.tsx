@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -527,7 +526,7 @@ export default function AuditChecklist() {
     try {
       setSaving(true);
       
-      // Prepare the data for upsert
+      // Prepare the data for insert
       const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
         audit_id: auditId,
         question_id: questionId,
@@ -539,11 +538,25 @@ export default function AuditChecklist() {
         setSaving(false);
         return;
       }
+
+      // First, delete existing answers for this audit and these questions
+      const questionIds = answersToSave.map(answer => answer.question_id);
       
-      // Upsert answers (insert if not exists, update if exists)
+      const { error: deleteError } = await supabase
+        .from("audit_answers")
+        .delete()
+        .eq("audit_id", auditId)
+        .in("question_id", questionIds);
+        
+      if (deleteError) {
+        console.error("Error deleting answers:", deleteError);
+        throw deleteError;
+      }
+      
+      // Then insert the new answers
       const { error } = await supabase
         .from("audit_answers")
-        .upsert(answersToSave, { onConflict: 'audit_id,question_id' });
+        .insert(answersToSave);
       
       if (error) {
         throw error;
@@ -578,7 +591,7 @@ export default function AuditChecklist() {
     try {
       setSaving(true);
       
-      // Prepare the data for upsert
+      // Prepare the data for insert
       const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
         audit_id: auditId,
         question_id: questionId,
