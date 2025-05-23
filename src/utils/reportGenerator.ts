@@ -441,6 +441,77 @@ export const generateAuditReport = async (auditId: string) => {
     
     addImplementationRoadmap(pdf, domainsData, recommendations, 40);
 
+    // Add formal signature page as the last page of the report
+    pdf.addPage();
+    pdf.setFontSize(14);
+    pdf.setTextColor(30, 30, 30);
+    pdf.text("Berita Acara Hasil Audit / Audit Formal Statement", 105, 20, {
+      align: "center"
+    });
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text("Dokumen ini berfungsi sebagai berita acara resmi bahwa audit COBIT 2019 telah dilaksanakan", 105, 30, {
+      align: "center"
+    });
+    pdf.text("This document serves as a formal statement that the COBIT 2019 audit has been conducted", 105, 35, {
+      align: "center"
+    });
+    
+    // Audit details
+    const auditDate = auditData.audit_date ? new Date(auditData.audit_date).toLocaleDateString('id-ID') : "Tidak ada tanggal";
+    pdf.setFontSize(11);
+    pdf.setTextColor(40, 40, 40);
+    pdf.text(`Organisasi / Organization: ${auditData.organization}`, 105, 50, { align: "center" });
+    pdf.text(`Tanggal Audit / Audit Date: ${auditDate}`, 105, 57, { align: "center" });
+    pdf.text(`Judul / Title: ${auditData.title}`, 105, 64, { align: "center" });
+    
+    // Signature boxes
+    const signatureBoxY = 90;
+    
+    // Left signature box (Auditor)
+    pdf.setDrawColor(100, 100, 100);
+    pdf.setLineWidth(0.5);
+    pdf.rect(30, signatureBoxY, 60, 60);
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(40, 40, 40);
+    pdf.text("Tanda Tangan Auditor", 60, signatureBoxY + 70, { align: "center" });
+    pdf.text("Auditor's Signature", 60, signatureBoxY + 75, { align: "center" });
+    
+    pdf.setFontSize(9);
+    pdf.text(`Nama / Name: ${auditorInfo.fullName}`, 60, signatureBoxY + 85, { align: "center" });
+    pdf.text(`Jabatan / Position: ${auditorInfo.position}`, 60, signatureBoxY + 90, { align: "center" });
+    pdf.text(`Sertifikasi / Certification: ${auditorInfo.certification}`, 60, signatureBoxY + 95, { align: "center" });
+    
+    // Right signature box (Head of Organization)
+    pdf.rect(130, signatureBoxY, 60, 60);
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(40, 40, 40);
+    pdf.text("Tanda Tangan Pimpinan", 160, signatureBoxY + 70, { align: "center" });
+    pdf.text("Head of Organization's Signature", 160, signatureBoxY + 75, { align: "center" });
+    
+    pdf.setFontSize(9);
+    pdf.text("Nama / Name: ______________________", 160, signatureBoxY + 85, { align: "center" });
+    pdf.text("Jabatan / Position: ______________________", 160, signatureBoxY + 90, { align: "center" });
+    
+    // Statement text
+    pdf.setFontSize(10);
+    pdf.setTextColor(40, 40, 40);
+    const statementText = "Dengan menandatangani dokumen ini, kedua belah pihak menyatakan bahwa audit telah dilaksanakan sesuai dengan standar COBIT 2019 dan hasil temuan telah disampaikan dengan benar dan akurat. / By signing this document, both parties declare that the audit has been conducted in accordance with COBIT 2019 standards and the findings have been presented correctly and accurately.";
+    const statementLines = pdf.splitTextToSize(statementText, 170);
+    pdf.text(statementLines, 105, signatureBoxY + 120, { align: "center" });
+    
+    // Place and date
+    pdf.text("Tempat dan Tanggal / Place and Date: ______________________", 105, signatureBoxY + 140, { align: "center" });
+    
+    // Add official statement at the bottom
+    pdf.setFontSize(8);
+    pdf.setTextColor(80, 80, 80);
+    pdf.text("Dokumen ini merupakan bagian resmi dari laporan audit COBIT 2019 dan memiliki kekuatan hukum yang sama.", 105, signatureBoxY + 155, { align: "center" });
+    pdf.text("This document is an official part of the COBIT 2019 audit report and has the same legal validity.", 105, signatureBoxY + 160, { align: "center" });
+
     // Add footer with page numbers
     const pageCount = pdf.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {

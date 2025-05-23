@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react"; 
+import { Download, Loader2, FileSignature } from "lucide-react"; 
 import { generateAuditReport } from '@/utils/reportGenerator';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -39,7 +39,7 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       
       toast({
         title: "Berhasil",
-        description: "Laporan telah dihasilkan dan diunduh"
+        description: "Laporan telah dihasilkan dan diunduh dengan halaman tanda tangan untuk berita acara."
       });
     } catch (error) {
       console.error("Error generating report:", error);
@@ -64,7 +64,7 @@ export const PDFReport: React.FC<PDFReportProps> = ({
       {showIcon && (
         isGenerating ? 
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 
-          <Download className="mr-2 h-4 w-4" />
+          <FileSignature className="mr-2 h-4 w-4" />
       )}
       {isGenerating ? "Sedang menghasilkan..." : label}
     </Button>
