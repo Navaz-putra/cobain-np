@@ -33,23 +33,21 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ audits }) => {
                 </Button>
               </Link>
               {audits.length > 0 && (
-                <>
-                  <Link to={`/audit-checklist/${audits[0]?.id}`}>
-                    <Button variant="outline" className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border-white/30">
-                      <Settings className="mr-2 h-4 w-4" />
-                      Kelola Audit
-                    </Button>
-                  </Link>
-                  <Button 
-                    variant="outline" 
-                    className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border-white/30"
-                    onClick={() => setAccountDialogOpen(true)}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Pengaturan Akun
+                <Link to={`/audit-checklist/${audits[0]?.id}`}>
+                  <Button variant="outline" className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border-white/30">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Kelola Audit
                   </Button>
-                </>
+                </Link>
               )}
+              <Button 
+                variant="outline" 
+                className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border-white/30"
+                onClick={() => setAccountDialogOpen(true)}
+              >
+                <User className="mr-2 h-4 w-4" />
+                Pengaturan Akun
+              </Button>
             </div>
           </div>
           <div className="flex items-center justify-center">
