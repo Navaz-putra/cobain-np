@@ -27,6 +27,7 @@ export default function AdminDashboard() {
 
   // Check if admin access token is available
   useEffect(() => {
+    console.log("Admin dashboard - checking user access:", user?.email, user?.role);
     setTokenError(null);
     
     if (user?.role !== "admin" && user?.email !== hardcodedSuperadminEmail) {
@@ -36,25 +37,61 @@ export default function AdminDashboard() {
     }
   }, [user, session]);
 
+  // Test database connection on component mount
+  useEffect(() => {
+    const testDatabaseConnection = async () => {
+      try {
+        console.log("Testing database connection...");
+        const { data, error } = await supabase
+          .from('cobit_questions')
+          .select('count', { count: 'exact', head: true });
+        
+        if (error) {
+          console.error("Database connection test failed:", error);
+          toast({
+            title: 'Kesalahan Koneksi Database',
+            description: `Tidak dapat terhubung ke database: ${error.message}`,
+            variant: 'destructive'
+          });
+        } else {
+          console.log("Database connection successful, question count:", data);
+        }
+      } catch (error) {
+        console.error("Database connection error:", error);
+        toast({
+          title: 'Kesalahan Koneksi Database',
+          description: 'Gagal menguji koneksi database',
+          variant: 'destructive'
+        });
+      }
+    };
+
+    testDatabaseConnection();
+  }, [toast]);
+
   // Fetch questions from database
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
         setLoading(true);
+        console.log("Fetching questions from database...");
+        
         const { data, error } = await supabase
           .from('cobit_questions')
           .select('*');
         
         if (error) {
+          console.error("Error fetching questions:", error);
           throw error;
         }
 
+        console.log("Questions fetched successfully:", data?.length);
         setQuestions(data || []);
       } catch (error) {
         console.error('Error fetching questions:', error);
         toast({
-          title: 'Error',
-          description: 'Gagal mengambil data pertanyaan audit',
+          title: 'Kesalahan Database',
+          description: `Gagal mengambil data pertanyaan audit: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
           variant: 'destructive'
         });
       } finally {
@@ -70,9 +107,11 @@ export default function AdminDashboard() {
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true);
+        console.log("Fetching users...");
         
         // Special case for superadmin user - if it's the hardcoded superadmin
         if (user?.email === hardcodedSuperadminEmail) {
+          console.log("Fetching users as superadmin");
           const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
             method: "POST",
             headers: {
@@ -86,9 +125,11 @@ export default function AdminDashboard() {
           });
           
           const result = await response.json();
+          console.log("Superadmin user fetch result:", result);
           
           if (response.ok) {
             setUsers(result.data?.users || []);
+            console.log("Users loaded successfully:", result.data?.users?.length);
           } else {
             throw new Error(result.error || "Failed to fetch users");
           }
@@ -103,6 +144,7 @@ export default function AdminDashboard() {
           return;
         }
 
+        console.log("Fetching users with access token");
         const response = await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/admin-operations", {
           method: "POST",
           headers: {
@@ -115,16 +157,18 @@ export default function AdminDashboard() {
         });
         
         const result = await response.json();
+        console.log("Regular user fetch result:", result);
         
         if (response.ok) {
           setUsers(result.data?.users || []);
+          console.log("Users loaded successfully:", result.data?.users?.length);
         } else {
           throw new Error(result.error || "Failed to fetch users");
         }
       } catch (error) {
         console.error('Error fetching users:', error);
         toast({
-          title: 'Error',
+          title: 'Kesalahan Database',
           description: `Gagal mengambil data pengguna: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
           variant: 'destructive'
         });
@@ -152,6 +196,12 @@ export default function AdminDashboard() {
           Pengaturan Akun
         </Button>
       </div>
+      
+      {tokenError && (
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-yellow-800">{tokenError}</p>
+        </div>
+      )}
       
       <AdminDashboardComponents
         userCount={users.length}

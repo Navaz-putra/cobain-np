@@ -19,6 +19,18 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
         setLoading(true);
         console.log("Fetching audits, isAdmin:", isAdmin, "userId:", userId);
         
+        // Test database connection first
+        const { data: testData, error: testError } = await supabase
+          .from("audits")
+          .select("count", { count: 'exact', head: true });
+        
+        if (testError) {
+          console.error("Database connection test failed:", testError);
+          throw new Error(`Database connection failed: ${testError.message}`);
+        }
+        
+        console.log("Database connection successful, total audits:", testData);
+        
         let query = supabase.from("audits").select(`
           *,
           audit_domains(*),
@@ -36,6 +48,7 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
         const { data, error } = await query;
         
         if (error) {
+          console.error("Error fetching audits:", error);
           throw error;
         }
         
@@ -72,9 +85,11 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
       } catch (error) {
         console.error("Error fetching audits:", error);
         toast({
-          title: "Error",
-          description: "Failed to load audit data"
+          title: "Kesalahan Database",
+          description: `Gagal memuat data audit: ${error instanceof Error ? error.message : 'Error tidak diketahui'}`,
+          variant: "destructive"
         });
+        setAudits([]);
       } finally {
         setLoading(false);
       }
@@ -105,7 +120,8 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
         .in("domain_id", selectedDomains);
         
       if (questionsError) {
-        throw questionsError;
+        console.error("Error counting questions:", questionsError);
+        return 0;
       }
       
       // Count answered questions for this audit
@@ -115,7 +131,8 @@ export const useAuditData = ({ userId, isAdmin = false }: UseAuditDataProps = {}
         .eq("audit_id", auditId);
         
       if (answersError) {
-        throw answersError;
+        console.error("Error counting answers:", answersError);
+        return 0;
       }
       
       return totalQuestions && totalQuestions > 0 ? (answeredQuestions || 0) / totalQuestions * 100 : 0;

@@ -23,7 +23,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        console.log("Auth state change:", event, session?.user?.email);
         setSession(session);
         if (session?.user) {
           // Extract name and role from user metadata and add it to the user object
@@ -36,11 +37,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           setUser(null);
         }
+        setLoading(false);
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Getting initial session:", session?.user?.email);
       setSession(session);
       if (session?.user) {
         // Extract name and role from user metadata and add it to the user object
@@ -61,8 +64,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log("Attempting login for:", email);
+      
       // Special case for our superadmin user
       if (email === "navazputra@students.amikom.ac.id" && password === "@Dede792002") {
+        console.log("Superadmin login detected");
         // Store user data in localStorage for the superadmin
         localStorage.setItem("cobain_user", JSON.stringify({
           id: "superadmin-id",
@@ -106,11 +112,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
-        console.error("Login error:", error.message);
+        console.error("Supabase login error:", error.message);
         return false;
       }
       
-      return true;
+      if (data.user) {
+        console.log("Login successful for user:", data.user.email);
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       console.error("Unexpected login error:", error);
       return false;
@@ -123,19 +134,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     name: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
+      console.log("Attempting signup for:", email);
+      
       // Create a customized email template by calling our edge function first
-      await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/custom-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "confirmation",
-          email: email,
-          name: name,
-          redirectTo: `${window.location.origin}/email-confirmation`,
-        }),
-      });
+      try {
+        await fetch("https://dcslbtsxmctxkudozrck.supabase.co/functions/v1/custom-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: "confirmation",
+            email: email,
+            name: name,
+            redirectTo: `${window.location.origin}/email-confirmation`,
+          }),
+        });
+      } catch (emailError) {
+        console.warn("Custom email function failed, continuing with standard signup:", emailError);
+      }
 
       // Then perform the signup
       const { data, error } = await supabase.auth.signUp({
@@ -151,16 +168,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       if (error) {
+        console.error("Signup error:", error.message);
         return { success: false, error: error.message };
       }
 
+      console.log("Signup successful for:", email);
       return { success: true };
     } catch (error: any) {
+      console.error("Unexpected signup error:", error);
       return { success: false, error: error.message || "Terjadi kesalahan saat pendaftaran" };
     }
   };
 
   const logout = async () => {
+    console.log("Logging out user");
     // Clear local storage data first
     localStorage.removeItem("cobain_user");
     
